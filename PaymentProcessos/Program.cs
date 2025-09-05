@@ -38,32 +38,17 @@ public class Program
 
         app.MapGet("/payments-summary", ([FromQuery] DateTime? from, [FromQuery] DateTime? to) =>
         {
-            return Results.Ok(new PaymentSummaryResponse());
+            return Results.Ok(new PaymentSummaryResponse(new PaymentSummaryData(0, 0), new PaymentSummaryData(0, 0)));
         });
 
         app.Run();
     }
 }
 
+
 public record PaymentRequest(string CorrelationId, decimal Ammount);
-
-public record PaymentSummaryResponse
-{
-    //[JsonPropertyName("default")]
-    public PaymentSummaryData Default { get; set; } = new PaymentSummaryData();
-
-    //[JsonPropertyName("fallback")]
-    public PaymentSummaryData Fallback { get; set; } = new PaymentSummaryData();
-}
-
-public record PaymentSummaryData
-{
-    //[JsonPropertyName("totalRequests")]
-    public int TotalRequests { get; set; }
-
-    //[JsonPropertyName("totalAmount")]
-    public decimal TotalAmount { get; set; }
-}
+public record PaymentSummaryResponse(PaymentSummaryData Default, PaymentSummaryData Fallback);
+public record PaymentSummaryData(int TotalRequests, decimal TotalAmount );
 
 
 [JsonSerializable(typeof(PaymentRequest))]
