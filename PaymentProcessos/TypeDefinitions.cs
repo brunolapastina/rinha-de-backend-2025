@@ -1,7 +1,6 @@
-
 using System.Text.Json.Serialization;
 
-namespace PaymentProcessos;
+namespace PaymentProcessor;
 
 public readonly record struct PaymentRequest(string CorrelationId, decimal Ammount);
 public record PaymentSummaryResponse(PaymentSummaryData Default, PaymentSummaryData Fallback);

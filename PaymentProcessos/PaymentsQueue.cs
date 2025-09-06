@@ -1,6 +1,6 @@
 using System.Threading.Channels;
 
-namespace PaymentProcessos;
+namespace PaymentProcessor;
 
 public class PaymentsQueue
 {

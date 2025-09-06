@@ -1,6 +1,6 @@
 using System;
 
-namespace PaymentProcessos;
+namespace PaymentProcessor;
 
 public class PaymentWorker(PaymentsQueue _paymentQueue) : BackgroundService
 {
