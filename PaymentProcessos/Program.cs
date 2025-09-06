@@ -16,6 +16,7 @@ public class Program
         builder.WebHost.ConfigureKestrel(serverOptions =>
         {
             serverOptions.AddServerHeader = false;
+            serverOptions.AllowResponseHeaderCompression = false;
             serverOptions.Limits.KeepAliveTimeout = TimeSpan.FromSeconds(30);
             serverOptions.Limits.RequestHeadersTimeout = TimeSpan.FromSeconds(2);
         });
@@ -27,12 +28,16 @@ public class Program
             options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
         });
 
+        builder.Services.AddSingleton<PaymentsQueue>();
+        builder.Services.AddHostedService<PaymentWorker>();
+
         var app = builder.Build();
 
         app.Urls.Add("http://0.0.0.0:9999");
 
-        app.MapPost("/payments", (PaymentRequest request) =>
+        app.MapPost("/payments", async (PaymentRequest request, PaymentsQueue paymentQueue) =>
         {
+            await paymentQueue.Enqueue(request);
             return TypedResults.Ok();
         });
 
@@ -43,17 +48,4 @@ public class Program
 
         app.Run();
     }
-}
-
-
-public record PaymentRequest(string CorrelationId, decimal Ammount);
-public record PaymentSummaryResponse(PaymentSummaryData Default, PaymentSummaryData Fallback);
-public record PaymentSummaryData(int TotalRequests, decimal TotalAmount );
-
-
-[JsonSerializable(typeof(PaymentRequest))]
-[JsonSerializable(typeof(PaymentSummaryResponse))]
-[JsonSerializable(typeof(PaymentSummaryData))]
-internal partial class AppJsonSerializerContext : JsonSerializerContext
-{
 }
