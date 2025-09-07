@@ -13,14 +13,13 @@ public class PaymentsQueue
          SingleReader = false,
          AllowSynchronousContinuations = false
       });
-      
-   private readonly Meter _queueMeter = new("PaymentProcessor.PaymentsQueue");
 
    public ChannelReader<PaymentRequest> Reader { get => _channel.Reader; }
 
-   public PaymentsQueue()
+   public PaymentsQueue(IMeterFactory meterFactory)
    {
-      _queueMeter.CreateObservableGauge(
+      var meter = meterFactory.Create("PaymentProcessor");
+      meter.CreateObservableGauge(
             name: "pending_payments",
             observeValue: () => new Measurement<int>(Reader.Count),
             unit: "payments",
