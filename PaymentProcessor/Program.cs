@@ -28,6 +28,14 @@ public class Program
             options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
         });
 
+        builder.Services.AddHttpClient();
+
+        builder.Services.AddKeyedSingleton("Default", (sp, key) =>
+            ActivatorUtilities.CreateInstance<PaymentProcessorService>(sp, (key as string)!));
+
+        builder.Services.AddKeyedSingleton("Fallback", (sp, key) =>
+            ActivatorUtilities.CreateInstance<PaymentProcessorService>(sp, (key as string)!));
+
         builder.Services.AddSingleton<PaymentsQueue>();
         builder.Services.AddHostedService<PaymentWorker>();
 
