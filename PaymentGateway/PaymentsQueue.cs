@@ -18,7 +18,7 @@ public class PaymentsQueue
 
    public PaymentsQueue(IMeterFactory meterFactory)
    {
-      var meter = meterFactory.Create("PaymentProcessor");
+      var meter = meterFactory.Create("PaymentGateway");
       meter.CreateObservableGauge(
             name: "pending_payments",
             observeValue: () => new Measurement<int>(Reader.Count),

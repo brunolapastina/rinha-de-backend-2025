@@ -13,6 +13,8 @@ public class PaymentWorker : BackgroundService
    private readonly PaymentProcessorService _fallbackPaymentProcessor;
    private Counter<int> _processedPaymentsCounter;
    private Counter<int> _errorsCounter;
+   private Histogram<long> _defaultResponseTime;
+   private Histogram<long> _fallbackResponseTime;
 
    public PaymentWorker(
       ILogger<PaymentWorker> logger,
@@ -26,16 +28,28 @@ public class PaymentWorker : BackgroundService
       _defaultPaymentProcessor = defaultPaymentProcessor;
       _fallbackPaymentProcessor = fallbackPaymentProcessor;
 
-      var meter = meterFactory.Create("PaymentProcessor");
+      var meter = meterFactory.Create("PaymentGateway");
       _processedPaymentsCounter = meter.CreateCounter<int>(
          name: "processed_payments",
          unit: "payments",
          description: "Total number of payments that have been processed");
-      
+
       _errorsCounter = meter.CreateCounter<int>(
          name: "processing_errors",
          unit: "payments",
          description: "Total number of errors that happened during processing of payments");
+
+      _defaultResponseTime = meter.CreateHistogram<long>(
+         name: "default_pp_response_time",
+         unit: "ms",
+         description: "Response time for the default payment processor"
+      );
+
+      _fallbackResponseTime = meter.CreateHistogram<long>(
+         name: "fallback_pp_response_time",
+         unit: "ms",
+         description: "Response time for the fallback payment processor"
+      );
    }
 
    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -67,9 +81,21 @@ public class PaymentWorker : BackgroundService
       _logger.LogInformation("Ended loop ID={Id}", id);
    }
 
+   private readonly Stopwatch _sw = new();
    private async Task ProcessPayment(PaymentRequest paymentReques, CancellationToken cancellationToken)
    {
-      await Task.Delay(10, cancellationToken);
-      _processedPaymentsCounter.Add(1);
+      _sw.Restart();
+      var res = await _defaultPaymentProcessor.SendPayment(paymentReques, cancellationToken);
+      _sw.Stop();
+
+      if (res)
+      {
+         _processedPaymentsCounter.Add(1);
+         _defaultResponseTime.Record(_sw.ElapsedMilliseconds);
+      }
+      else
+      {
+         _errorsCounter.Add(1);
+      }
    }
 }
