@@ -1,11 +1,12 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
+using System.Text.Json;
 
 namespace PaymentProcessor;
 
 public class PaymentWorker : BackgroundService
 {
-   const int WorkerLoopCount = 8;
+   const int WorkerLoopCount = 16;
 
    private readonly ILogger<PaymentWorker> _logger;
    private readonly PaymentsQueue _paymentQueue;
@@ -68,7 +69,7 @@ public class PaymentWorker : BackgroundService
 
    private async Task ProcessingLoop(int id, CancellationToken cancellationToken)
    {
-      _logger.LogInformation("Started loop ID={Id}", id);
+      _logger.LogDebug("Started loop ID={Id}", id);
 
       while (await _paymentQueue.Reader.WaitToReadAsync(cancellationToken))
       {
@@ -78,7 +79,7 @@ public class PaymentWorker : BackgroundService
          }
       }
 
-      _logger.LogInformation("Ended loop ID={Id}", id);
+      _logger.LogDebug("Ended loop ID={Id}", id);
    }
 
    private readonly Stopwatch _sw = new();

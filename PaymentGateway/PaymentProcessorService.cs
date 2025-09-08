@@ -1,4 +1,5 @@
 using System;
+using System.Net;
 using System.Net.Mime;
 using System.Text.Json;
 
@@ -6,8 +7,8 @@ namespace PaymentProcessor;
 
 public class PaymentProcessorService
 {
-   const string PaymentsEndpoint = "/payments";
-   const string ServiceHealthEndpoint = "/payments/service-health";
+   static private readonly Uri PaymentsEndpoint = new ("/payments", UriKind.Relative);
+   static private readonly Uri ServiceHealthEndpoint = new("/payments/service-health", UriKind.Relative);
 
    private static readonly System.Net.Http.Headers.MediaTypeHeaderValue JsonContetType = new("application/json");
    private readonly HttpClient _client;
@@ -17,7 +18,7 @@ public class PaymentProcessorService
    public PaymentProcessorService(ILogger<PaymentProcessorService> logger, IHttpClientFactory httpFactory, IConfiguration configuration, string key)
    {
       _logger = logger;
-      _client = httpFactory.CreateClient();
+      _client = httpFactory.CreateClient("PaymentProcessor");
       _key = key;
 
       _client.BaseAddress = new Uri(configuration.GetSection($"PaymentProcessors:{_key}:BaseAddress").Get<string>() ??
@@ -26,17 +27,22 @@ public class PaymentProcessorService
       _logger.LogInformation("{PaymentProcessor} payment processor service created: BaseAddress={BaseAddress}", _key, _client.BaseAddress.ToString());
    }
 
-   public async Task<bool> SendPayment(PaymentRequest request, CancellationToken cancellationToken)
+   public async Task<bool> SendPayment(PaymentRequest paymentRequest, CancellationToken cancellationToken)
    {
-      var ppReq = new PaymentProcessorRequest(request.CorrelationId, request.Ammount, DateTime.UtcNow);
-
-      var jsonContent = JsonSerializer.Serialize(ppReq, AppJsonSerializerContext.Default.PaymentProcessorRequest);
+      // Skip this object creatioon and serialize data using Utf8JsonWriter
+      var ppReq = new PaymentProcessorRequest(paymentRequest.CorrelationId, paymentRequest.Ammount, DateTime.UtcNow);
 
       //TODO: have a memoryPool of StringContent`s so that we decrease the GC pressure
-      var content = new StringContent(jsonContent, System.Text.Encoding.UTF8);
-      content.Headers.ContentType = JsonContetType;
+      using var content = JsonContent.Create(ppReq, AppJsonSerializerContext.Default.PaymentProcessorRequest, JsonContetType);
 
-      var response = await _client.PostAsync(PaymentsEndpoint, content, cancellationToken);
+      using var request = new HttpRequestMessage(HttpMethod.Post, PaymentsEndpoint)
+      {
+         Version = HttpVersion.Version11,
+         VersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
+         Content = content
+      };
+
+      using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
       if (!response.IsSuccessStatusCode)
       {
          _logger.LogError("Error on {PaymentProcessor} payment processor. Endppoint={Endpoint} StatusCode={StatusCode} Content={ErrorContent}",
@@ -49,7 +55,7 @@ public class PaymentProcessorService
    
    public async Task<ServiceHealthResponse?> GetServiceHealth(CancellationToken cancellationToken)
    {
-      var response = await _client.GetAsync(ServiceHealthEndpoint, cancellationToken);
+      using var response = await _client.GetAsync(ServiceHealthEndpoint, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
       if (!response.IsSuccessStatusCode)
       {
          _logger.LogError("Error on {PaymentProcessor} payment processor. Endppoint={Endpoint} StatusCode={StatusCode} Content={ErrorContent}",

@@ -1,3 +1,4 @@
+using System.Net;
 using System.Runtime;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -28,7 +29,34 @@ public class Program
             options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
         });
 
-        builder.Services.AddHttpClient();
+        builder.Services
+            .AddHttpClient("PaymentProcessor")
+            .ConfigurePrimaryHttpMessageHandler(() =>
+            new SocketsHttpHandler
+            {
+                // Recycle connections periodically to avoid stale DNS entries
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5),
+
+                // Drop idle connections (frees sockets under high load)
+                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
+
+                // Controls parallelism per destination
+                // Raise if you’re hitting throttling under high load
+                MaxConnectionsPerServer = 64, 
+
+                // True = faster reuse of sockets across DNS changes,
+                // but stale DNS info may persist if you don’t set a lifetime
+                EnableMultipleHttp2Connections = true,
+
+                // Disables automatic decompression if you don’t need it
+                AutomaticDecompression = DecompressionMethods.None,
+
+                // For high performance, disable proxy unless you need it
+                UseProxy = false,
+
+                // If you don’t need cookies, turn them off
+                UseCookies = false
+            });
 
         builder.Services.AddKeyedSingleton("Default", (sp, key) =>
             ActivatorUtilities.CreateInstance<PaymentProcessorService>(sp, (key as string)!));

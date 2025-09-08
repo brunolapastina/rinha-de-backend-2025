@@ -1,5 +1,4 @@
 using System.Diagnostics.Metrics;
-using System.Diagnostics.Tracing;
 using System.Threading.Channels;
 
 namespace PaymentProcessor;
