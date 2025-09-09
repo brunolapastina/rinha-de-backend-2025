@@ -4,7 +4,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace PaymentProcessor;
+namespace PaymentGateway;
 
 public class Program
 {
@@ -34,28 +34,13 @@ public class Program
             .ConfigurePrimaryHttpMessageHandler(() =>
             new SocketsHttpHandler
             {
-                // Recycle connections periodically to avoid stale DNS entries
-                PooledConnectionLifetime = TimeSpan.FromMinutes(5),
-
-                // Drop idle connections (frees sockets under high load)
-                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),
-
-                // Controls parallelism per destination
-                // Raise if you’re hitting throttling under high load
-                MaxConnectionsPerServer = 64, 
-
-                // True = faster reuse of sockets across DNS changes,
-                // but stale DNS info may persist if you don’t set a lifetime
-                EnableMultipleHttp2Connections = true,
-
-                // Disables automatic decompression if you don’t need it
-                AutomaticDecompression = DecompressionMethods.None,
-
-                // For high performance, disable proxy unless you need it
-                UseProxy = false,
-
-                // If you don’t need cookies, turn them off
-                UseCookies = false
+                PooledConnectionLifetime = TimeSpan.FromMinutes(5),     // Recycle connections periodically to avoid stale DNS entries
+                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),  // Drop idle connections (frees sockets under high load)
+                MaxConnectionsPerServer = 64,                           // Controls parallelism per destination
+                EnableMultipleHttp2Connections = true,                  // True = faster reuse of sockets across DNS changes, but stale DNS info may persist if you don’t set a lifetime
+                AutomaticDecompression = DecompressionMethods.None,     // Disables automatic decompression if you don’t need it
+                UseProxy = false,                                       // For high performance, disable proxy unless you need it
+                UseCookies = false                                      // Don't need cookies, so turn it off
             });
 
         builder.Services.AddKeyedSingleton("Default", (sp, key) =>

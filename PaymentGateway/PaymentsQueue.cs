@@ -1,7 +1,7 @@
 using System.Diagnostics.Metrics;
 using System.Threading.Channels;
 
-namespace PaymentProcessor;
+namespace PaymentGateway;
 
 public class PaymentsQueue
 {

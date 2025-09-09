@@ -1,8 +1,7 @@
 using System.Diagnostics;
 using System.Diagnostics.Metrics;
-using System.Text.Json;
 
-namespace PaymentProcessor;
+namespace PaymentGateway;
 
 public class PaymentWorker : BackgroundService
 {

@@ -1,16 +1,13 @@
-using System;
 using System.Net;
-using System.Net.Mime;
-using System.Text.Json;
 
-namespace PaymentProcessor;
+namespace PaymentGateway;
 
 public class PaymentProcessorService
 {
    static private readonly Uri PaymentsEndpoint = new ("/payments", UriKind.Relative);
    static private readonly Uri ServiceHealthEndpoint = new("/payments/service-health", UriKind.Relative);
-
-   private static readonly System.Net.Http.Headers.MediaTypeHeaderValue JsonContetType = new("application/json");
+   static private readonly System.Net.Http.Headers.MediaTypeHeaderValue JsonContetType = new("application/json");
+   
    private readonly HttpClient _client;
    private readonly ILogger<PaymentProcessorService> _logger;
    private readonly string _key;

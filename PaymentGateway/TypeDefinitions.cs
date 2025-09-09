@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 
-namespace PaymentProcessor;
+namespace PaymentGateway;
 
 public readonly record struct PaymentRequest(string CorrelationId, decimal Ammount);
 public readonly record struct PaymentProcessorRequest(string CorrelationId, decimal Ammount, DateTime RequestedAt);

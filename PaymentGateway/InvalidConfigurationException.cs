@@ -1,4 +1,4 @@
-namespace PaymentProcessor;
+namespace PaymentGateway;
 
 [Serializable]
 internal class InvalidConfigurationException : Exception
