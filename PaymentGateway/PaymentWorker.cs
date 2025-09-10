@@ -5,9 +5,8 @@ namespace PaymentGateway;
 
 public class PaymentWorker : BackgroundService
 {
-   const int WorkerLoopCount = 16;
-
    private readonly ILogger<PaymentWorker> _logger;
+   private readonly int _workerLoopCount;
    private readonly PaymentsQueue _paymentQueue;
    private readonly PaymentProcessorService _defaultPaymentProcessor;
    private readonly PaymentProcessorService _fallbackPaymentProcessor;
@@ -18,6 +17,7 @@ public class PaymentWorker : BackgroundService
 
    public PaymentWorker(
       ILogger<PaymentWorker> logger,
+      IConfiguration configuration,
       IMeterFactory meterFactory,
       PaymentsQueue paymentQueue,
       [FromKeyedServices("Default")] PaymentProcessorService defaultPaymentProcessor,
@@ -27,6 +27,8 @@ public class PaymentWorker : BackgroundService
       _paymentQueue = paymentQueue;
       _defaultPaymentProcessor = defaultPaymentProcessor;
       _fallbackPaymentProcessor = fallbackPaymentProcessor;
+
+      _workerLoopCount = configuration.GetValue("NumOfProcessingTaks", 8);
 
       var meter = meterFactory.Create("PaymentGateway");
       _processedPaymentsCounter = meter.CreateCounter<int>(
@@ -56,12 +58,16 @@ public class PaymentWorker : BackgroundService
    {
       _logger.LogInformation("Starting {WorkerLoopCount} processing loops", WorkerLoopCount);
 
+      var healthCheck = HealthCheckLoop(stoppingToken);
+
       var workers = Enumerable
          .Range(0, WorkerLoopCount)
          .Select(async id => await ProcessingLoop(id, stoppingToken)) // generator
+         .Append(healthCheck)
          .ToArray();
 
       await Task.WhenAll(workers);
+
 
       _logger.LogInformation("All processing loops ended");
    }
@@ -97,5 +103,18 @@ public class PaymentWorker : BackgroundService
       {
          _errorsCounter.Add(1);
       }
+   }
+
+   private async Task HealthCheckLoop(CancellationToken cancellationToken)
+   {
+      _logger.LogDebug("Started health check loop");
+
+      while (!cancellationToken.IsCancellationRequested)
+      {
+         var defaultHc = await _defaultPaymentProcessor.GetServiceHealth(cancellationToken);
+         var fallbackHc = await _fallbackPaymentProcessor.GetServiceHealth(cancellationToken);
+      }
+
+      _logger.LogDebug("Ended health check loop");
    }
 }
