@@ -42,7 +42,7 @@ public class PaymentProcessorService
       using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
       if (!response.IsSuccessStatusCode)
       {
-         _logger.LogError("Error on {PaymentProcessor} payment processor. Endppoint={Endpoint} StatusCode={StatusCode} Content={ErrorContent}",
+         _logger.LogWarning("Error on {PaymentProcessor} payment processor. Endppoint={Endpoint} StatusCode={StatusCode} Content={ErrorContent}",
             _key, PaymentsEndpoint, response.StatusCode, await response.Content.ReadAsStringAsync(cancellationToken));
          return false;
       }
@@ -55,7 +55,7 @@ public class PaymentProcessorService
       using var response = await _client.GetAsync(ServiceHealthEndpoint, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
       if (!response.IsSuccessStatusCode)
       {
-         _logger.LogError("Error on {PaymentProcessor} payment processor. Endppoint={Endpoint} StatusCode={StatusCode} Content={ErrorContent}",
+         _logger.LogWarning("Error on {PaymentProcessor} payment processor. Endppoint={Endpoint} StatusCode={StatusCode} Content={ErrorContent}",
             _key, ServiceHealthEndpoint, response.StatusCode, await response.Content.ReadAsStringAsync(cancellationToken));
          return null;
       }
