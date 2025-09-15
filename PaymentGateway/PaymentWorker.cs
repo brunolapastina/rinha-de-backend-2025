@@ -10,10 +10,14 @@ public class PaymentWorker : BackgroundService
    private readonly PaymentsQueue _paymentQueue;
    private readonly PaymentProcessorService _defaultPaymentProcessor;
    private readonly PaymentProcessorService _fallbackPaymentProcessor;
-   private Counter<int> _processedPaymentsCounter;
-   private Counter<int> _errorsCounter;
-   private Histogram<long> _defaultResponseTime;
-   private Histogram<long> _fallbackResponseTime;
+
+   private readonly CurrentHealth _currentHealth = new();
+
+   private readonly Counter<int> _defaultProcessedPaymentsCounter;
+   private readonly Counter<int> _fallbackProcessedPaymentsCounter;
+   private readonly Counter<int> _errorsCounter;
+   private readonly Histogram<long> _defaultResponseTime;
+   private readonly Histogram<long> _fallbackResponseTime;
 
    public PaymentWorker(
       ILogger<PaymentWorker> logger,
@@ -31,10 +35,15 @@ public class PaymentWorker : BackgroundService
       _workerLoopCount = configuration.GetValue("NumOfProcessingTaks", 8);
 
       var meter = meterFactory.Create("PaymentGateway");
-      _processedPaymentsCounter = meter.CreateCounter<int>(
-         name: "processed_payments",
+      _defaultProcessedPaymentsCounter = meter.CreateCounter<int>(
+         name: "default_processed_payments",
          unit: "payments",
-         description: "Total number of payments that have been processed");
+         description: "Total number of payments that have been processed by de Default Processor");
+
+      _fallbackProcessedPaymentsCounter = meter.CreateCounter<int>(
+         name: "fallback_processed_payments",
+         unit: "payments",
+         description: "Total number of payments that have been processed by the Fallback Processor");
 
       _errorsCounter = meter.CreateCounter<int>(
          name: "processing_errors",
@@ -56,14 +65,14 @@ public class PaymentWorker : BackgroundService
 
    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
    {
-      _logger.LogInformation("Starting {WorkerLoopCount} processing loops", WorkerLoopCount);
+      _logger.LogInformation("Starting {WorkerLoopCount} processing loops", _workerLoopCount);
 
-      var healthCheck = HealthCheckLoop(stoppingToken);
+      //var healthCheck = HealthCheckLoop(stoppingToken);
 
       var workers = Enumerable
-         .Range(0, WorkerLoopCount)
+         .Range(0, _workerLoopCount)
          .Select(async id => await ProcessingLoop(id, stoppingToken)) // generator
-         .Append(healthCheck)
+         //.Append(healthCheck)
          .ToArray();
 
       await Task.WhenAll(workers);
@@ -80,7 +89,11 @@ public class PaymentWorker : BackgroundService
       {
          while (_paymentQueue.Reader.TryRead(out PaymentRequest request))
          {
-            await ProcessPayment(request, cancellationToken);
+            var res = await ProcessPayment(request, cancellationToken);
+            if (!res)
+            {  // Error processing payment, so enqueue it back
+               await _paymentQueue.Enqueue(request);
+            }
          }
       }
 
@@ -88,33 +101,63 @@ public class PaymentWorker : BackgroundService
    }
 
    private readonly Stopwatch _sw = new();
-   private async Task ProcessPayment(PaymentRequest paymentReques, CancellationToken cancellationToken)
+   private async Task<bool> ProcessPayment(PaymentRequest paymentRequest, CancellationToken cancellationToken)
    {
-      _sw.Restart();
-      var res = await _defaultPaymentProcessor.SendPayment(paymentReques, cancellationToken);
-      _sw.Stop();
+      var best = _currentHealth.GetBestPaymentProcessor();
 
+      _sw.Restart();
+      var res = await _defaultPaymentProcessor.SendPayment(paymentRequest, cancellationToken);
+      _sw.Stop();
       if (res)
       {
-         _processedPaymentsCounter.Add(1);
+         _defaultProcessedPaymentsCounter.Add(1);
          _defaultResponseTime.Record(_sw.ElapsedMilliseconds);
       }
       else
       {
-         _errorsCounter.Add(1);
-      }
+         _sw.Restart();
+         res = await _fallbackPaymentProcessor.SendPayment(paymentRequest, cancellationToken);
+         _sw.Stop();
+         if (res)
+         {
+            _fallbackProcessedPaymentsCounter.Add(1);
+            _fallbackResponseTime.Record(_sw.ElapsedMilliseconds);
+         }
+         else
+         {
+            _errorsCounter.Add(1);
+         }
+      }      
+
+      return res;
    }
 
    private async Task HealthCheckLoop(CancellationToken cancellationToken)
    {
-      _logger.LogDebug("Started health check loop");
+      _logger.LogInformation("Started health check loop");
 
       while (!cancellationToken.IsCancellationRequested)
       {
          var defaultHc = await _defaultPaymentProcessor.GetServiceHealth(cancellationToken);
+         if (defaultHc.HasValue)
+         {
+            _currentHealth.DefaultFailing = defaultHc.Value.Failing;
+            _currentHealth.DefaultMinResponseTime = defaultHc.Value.MinResponseTime;
+         }
+
          var fallbackHc = await _fallbackPaymentProcessor.GetServiceHealth(cancellationToken);
+         if (fallbackHc.HasValue)
+         {
+            _currentHealth.FallbackFailing = fallbackHc.Value.Failing;
+            _currentHealth.FallbackMinResponseTime = fallbackHc.Value.MinResponseTime;
+         }
+
+         _logger.LogInformation("[HealthCheck] Default:[Failing:{defaultFailing}, MinResponseTime:{defaultMinResponseTime}] Fallback:[Failing:{fallbackFailing}, MinResponseTime:{fallbackMinResponseTime}]",
+         _currentHealth.DefaultFailing, _currentHealth.DefaultMinResponseTime, _currentHealth.FallbackFailing, _currentHealth.FallbackMinResponseTime);
+
+         await Task.Delay(5000, cancellationToken);
       }
 
-      _logger.LogDebug("Ended health check loop");
+      _logger.LogInformation("Ended health check loop");
    }
 }
