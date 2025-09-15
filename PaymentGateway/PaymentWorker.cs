@@ -65,6 +65,9 @@ public class PaymentWorker : BackgroundService
 
    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
    {
+      await _defaultPaymentProcessor.PurgePayments(stoppingToken);
+      await _fallbackPaymentProcessor.PurgePayments(stoppingToken);
+
       _logger.LogInformation("Starting {WorkerLoopCount} processing loops", _workerLoopCount);
 
       //var healthCheck = HealthCheckLoop(stoppingToken);
