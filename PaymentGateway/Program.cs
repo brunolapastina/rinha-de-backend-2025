@@ -49,6 +49,7 @@ public class Program
         builder.Services.AddKeyedSingleton("Fallback", (sp, key) =>
             ActivatorUtilities.CreateInstance<PaymentProcessorService>(sp, (key as string)!));
 
+        builder.Services.AddSingleton<StorageService>();
         builder.Services.AddSingleton<PaymentsQueue>();
         builder.Services.AddHostedService<PaymentWorker>();
 
@@ -62,9 +63,17 @@ public class Program
             return TypedResults.Ok();
         });
 
-        app.MapGet("/payments-summary", ([FromQuery] DateTime? from, [FromQuery] DateTime? to) =>
+        app.MapGet("/payments-summary", async ([FromQuery] DateTime? from, [FromQuery] DateTime? to, StorageService storageService) =>
         {
-            return Results.Ok(new PaymentSummaryResponse(new PaymentSummaryData(0, 0), new PaymentSummaryData(0, 0)));
+            var res = await storageService.GetSummary(from, to);
+            var grp = res.GroupBy(x => x.PaymentProcessor);
+            return Results.Ok(new PaymentSummaryResponse(
+                new PaymentSummaryData(
+                    grp.FirstOrDefault(x => x.Key == PaymentProcessor.Default)?.Count() ?? 0,
+                    grp.FirstOrDefault(x => x.Key == PaymentProcessor.Default)?.Sum(x => x.Ammount) ?? 0),
+                new PaymentSummaryData(
+                    grp.FirstOrDefault(x => x.Key == PaymentProcessor.Fallback)?.Count() ?? 0,
+                    grp.FirstOrDefault(x => x.Key == PaymentProcessor.Fallback)?.Sum(x => x.Ammount) ?? 0)));
         });
 
         app.Run();

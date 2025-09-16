@@ -28,10 +28,3 @@ public class CurrentHealth
       }
    }
 }
-
-public enum PaymentProcessor
-{
-   None,
-   Default,
-   Fallback
-}

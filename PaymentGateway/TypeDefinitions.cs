@@ -2,11 +2,14 @@ using System.Text.Json.Serialization;
 
 namespace PaymentGateway;
 
-public readonly record struct PaymentRequest(string CorrelationId, decimal Ammount);
-public readonly record struct PaymentProcessorRequest(string CorrelationId, decimal Ammount, DateTime RequestedAt);
+public enum PaymentProcessor{ None, Default, Fallback }
+
+public readonly record struct PaymentRequest(string CorrelationId, decimal Amount);
+public readonly record struct PaymentProcessorRequest(string CorrelationId, decimal Ammount, DateTimeOffset RequestedAt);
 public readonly record struct ServiceHealthResponse(bool Failing, int MinResponseTime);
 public record PaymentSummaryResponse(PaymentSummaryData Default, PaymentSummaryData Fallback);
 public record PaymentSummaryData(int TotalRequests, decimal TotalAmount );
+public readonly record struct PaymentStorage(string CorrelationId, decimal Ammount, PaymentProcessor PaymentProcessor);
 
 
 [JsonSerializable(typeof(PaymentRequest))]
@@ -14,6 +17,7 @@ public record PaymentSummaryData(int TotalRequests, decimal TotalAmount );
 [JsonSerializable(typeof(ServiceHealthResponse))]
 [JsonSerializable(typeof(PaymentSummaryResponse))]
 [JsonSerializable(typeof(PaymentSummaryData))]
+[JsonSerializable(typeof(PaymentStorage))]
 internal partial class AppJsonSerializerContext : JsonSerializerContext
 {
 }

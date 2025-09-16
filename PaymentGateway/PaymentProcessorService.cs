@@ -28,11 +28,8 @@ public class PaymentProcessorService
       _logger.LogInformation("{PaymentProcessor} payment processor service created: BaseAddress={BaseAddress}", _key, _client.BaseAddress.ToString());
    }
 
-   public async Task<bool> SendPayment(PaymentRequest paymentRequest, CancellationToken cancellationToken)
+   public async Task<bool> SendPayment(PaymentProcessorRequest ppReq, CancellationToken cancellationToken)
    {
-      // Skip this object creatioon and serialize data using Utf8JsonWriter
-      var ppReq = new PaymentProcessorRequest(paymentRequest.CorrelationId, paymentRequest.Ammount, DateTime.UtcNow);
-
       //TODO: have a memoryPool of StringContent`s so that we decrease the GC pressure
       using var content = JsonContent.Create(ppReq, AppJsonSerializerContext.Default.PaymentProcessorRequest, JsonContetType);
 
