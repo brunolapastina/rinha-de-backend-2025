@@ -1,0 +1,95 @@
+services:
+
+  redis:
+    image: redis:8-alpine
+    container_name: rinha-redis
+    command: redis-server --save "" --appendonly no --maxclients 20000
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "0.2"
+          memory: "80MB"
+
+  nginx:
+    image: nginx:1-alpine
+    container_name: rinha-nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api1
+      - api2
+    ports:
+      - "9999:9999"
+    networks:
+      - backend
+      - payment-processor
+    deploy:
+      resources:
+        limits:
+          cpus: "0.1"
+          memory: "20MB"
+  
+  api1: &api
+    build:
+      context: ./PaymentGateway
+      dockerfile: Dockerfile
+    #platform: linux/amd64
+    #image: rinha-backend-2025:amd64
+    image: rinha-backend-2025:arm64
+    container_name: rinha-api1
+    hostname: api1
+    environment:
+      - AppPort=8080
+      - RedisConfig=redis:6379
+      - PaymentProcessors_Default_BaseAddress=http://payment-processor-default:8080
+      - PaymentProcessors_Fallback_BaseAddress=http://payment-processor-fallback:8080
+      - INSTANCE_ID=API-1
+      - NumOfProcessingTaks=8
+    networks:
+      - backend
+      - payment-processor
+    depends_on:
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.4"
+          memory: "50MB"
+
+  api2:
+    <<: *api
+    container_name: rinha-api2
+    hostname: api2
+    environment:
+      - AppPort=8080
+      - RedisConfig=redis:6379
+      - PaymentProcessors_Default_BaseAddress=http://payment-processor-default:8080
+      - PaymentProcessors_Fallback_BaseAddress=http://payment-processor-fallback:8080
+      - INSTANCE_ID=API-2
+      - NumOfProcessingTaks=8
+  
+  api3:
+    <<: *api
+    container_name: rinha-api3
+    hostname: api3
+    environment:
+      - AppPort=8080
+      - RedisConfig=redis:6379
+      - PaymentProcessors_Default_BaseAddress=http://payment-processor-default:8080
+      - PaymentProcessors_Fallback_BaseAddress=http://payment-processor-fallback:8080
+      - INSTANCE_ID=API-3
+      - NumOfProcessingTaks=8
+
+networks:
+  backend:
+    driver: bridge
+  payment-processor:
+    external: true
