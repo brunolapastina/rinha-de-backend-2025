@@ -55,7 +55,8 @@ public class Program
 
         var app = builder.Build();
 
-        app.Urls.Add("http://0.0.0.0:9999");
+        var appPort = app.Configuration.GetValue("AppPort", 8080);
+        app.Urls.Add($"http://0.0.0.0:{appPort}");
 
         app.MapPost("/payments", async (PaymentRequest request, PaymentsQueue paymentQueue) =>
         {
