@@ -6,6 +6,7 @@ namespace PaymentGateway;
 public class PaymentWorker : BackgroundService
 {
    private readonly ILogger<PaymentWorker> _logger;
+   private readonly bool _startFresh;
    private readonly int _workerLoopCount;
    private readonly PaymentsQueue _paymentQueue;
    private readonly StorageService _storageService;
@@ -35,6 +36,7 @@ public class PaymentWorker : BackgroundService
       _defaultPaymentProcessor = defaultPaymentProcessor;
       _fallbackPaymentProcessor = fallbackPaymentProcessor;
 
+      _startFresh = configuration.GetValue("StartFresh", false);
       _workerLoopCount = configuration.GetValue("NumOfProcessingTaks", 8);
 
       var meter = meterFactory.Create("PaymentGateway");
@@ -68,9 +70,12 @@ public class PaymentWorker : BackgroundService
 
    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
    {
-      await _defaultPaymentProcessor.PurgePayments(stoppingToken);
-      await _fallbackPaymentProcessor.PurgePayments(stoppingToken);
-      await _storageService.ClearAllTransactions();
+      if (_startFresh)
+      {
+         await _defaultPaymentProcessor.PurgePayments(stoppingToken);
+         await _fallbackPaymentProcessor.PurgePayments(stoppingToken);
+         await _storageService.ClearAllTransactions();
+      }
 
       _logger.LogInformation("Starting {WorkerLoopCount} processing loops", _workerLoopCount);
 
