@@ -61,7 +61,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.4"
+          cpus: "0.6"
           memory: "50MB"
 
   api2:
@@ -74,18 +74,6 @@ services:
       - PaymentProcessors_Default_BaseAddress=http://payment-processor-default:8080
       - PaymentProcessors_Fallback_BaseAddress=http://payment-processor-fallback:8080
       - INSTANCE_ID=API-2
-      - NumOfProcessingTaks=8
-  
-  api3:
-    <<: *api
-    container_name: rinha-api3
-    hostname: api3
-    environment:
-      - AppPort=8080
-      - RedisConfig=redis:6379
-      - PaymentProcessors_Default_BaseAddress=http://payment-processor-default:8080
-      - PaymentProcessors_Fallback_BaseAddress=http://payment-processor-fallback:8080
-      - INSTANCE_ID=API-3
       - NumOfProcessingTaks=8
 
 networks:
