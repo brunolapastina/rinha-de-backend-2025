@@ -7,8 +7,8 @@ public enum PaymentProcessor{ None, Default, Fallback }
 public readonly record struct PaymentRequest(string CorrelationId, decimal Amount);
 public readonly record struct PaymentProcessorRequest(string CorrelationId, decimal Ammount, DateTimeOffset RequestedAt);
 public readonly record struct ServiceHealthResponse(bool Failing, int MinResponseTime);
-public record PaymentSummaryResponse(PaymentSummaryData Default, PaymentSummaryData Fallback);
-public record PaymentSummaryData(int TotalRequests, decimal TotalAmount );
+public readonly record struct PaymentSummaryResponse(PaymentSummaryData Default, PaymentSummaryData Fallback);
+public readonly record struct PaymentSummaryData(int TotalRequests, decimal TotalAmount );
 public readonly record struct PaymentStorage(string CorrelationId, decimal Ammount, PaymentProcessor PaymentProcessor);
 
 
