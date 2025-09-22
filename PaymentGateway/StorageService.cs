@@ -1,7 +1,4 @@
-using System;
-using System.Collections;
 using System.Text.Json;
-using Microsoft.AspNetCore.Mvc.ModelBinding;
 using StackExchange.Redis;
 
 namespace PaymentGateway;
@@ -13,12 +10,17 @@ public class StorageService
    private readonly ILogger<StorageService> _logger;
    private readonly IDatabase _db;
 
+   private readonly CommandFlags _transactionFlags;
+
    public StorageService(ILogger<StorageService> logger, IConfiguration configuration)
    {
       _logger = logger;
 
       var redisConfig = configuration.GetValue<string?>("RedisConfig", null) ??
          throw new InvalidConfigurationException("Redis configuration has to be set");
+
+      var fireAndForget = configuration.GetValue<bool>("RedisFireAndForget", false);
+      _transactionFlags = fireAndForget ? CommandFlags.FireAndForget : CommandFlags.None;
 
       var redis = ConnectionMultiplexer.Connect(redisConfig);
       _db = redis.GetDatabase();
@@ -35,10 +37,7 @@ public class StorageService
       var stg = new PaymentStorage(CorrelationId, Ammount, PaymentProcessor);
       string json = JsonSerializer.Serialize(stg, AppJsonSerializerContext.Default.PaymentStorage);
 
-      _logger.LogTrace("Adding transaction - RequestedAt:{Timestamp} Score:{Score} Content:{Content}",
-         RequestedAt, score, json);
-
-      var ret = await _db.SortedSetAddAsync(Key, json, score/*, flags: CommandFlags.FireAndForget*/);
+      var ret = await _db.SortedSetAddAsync(Key, json, score, _transactionFlags);
       if (!ret)
       {
          _logger.LogError("Error inserting transation into log");
