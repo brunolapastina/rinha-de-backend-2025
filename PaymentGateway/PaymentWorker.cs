@@ -115,8 +115,6 @@ public class PaymentWorker : BackgroundService
    private readonly Stopwatch _sw = new();
    private async Task<bool> ProcessPayment(PaymentRequest paymentRequest, CancellationToken cancellationToken)
    {
-      //var best = _currentHealth.GetBestPaymentProcessor();
-
       var ppReq = new PaymentProcessorRequest(paymentRequest.CorrelationId, paymentRequest.Amount, DateTimeOffset.UtcNow);
 
       _sw.Restart();
@@ -145,7 +143,7 @@ public class PaymentWorker : BackgroundService
             _errorsCounter.Add(1);
          }
       }      
-
+      
       return res;
    }
 

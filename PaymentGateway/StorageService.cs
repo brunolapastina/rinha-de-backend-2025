@@ -29,7 +29,7 @@ public class StorageService
       await _db.KeyDeleteAsync(Key);
    }
 
-   public void AddTransaction(DateTimeOffset RequestedAt, string CorrelationId, decimal Ammount, PaymentProcessor PaymentProcessor)
+   public async Task AddTransaction(DateTimeOffset RequestedAt, string CorrelationId, decimal Ammount, PaymentProcessor PaymentProcessor)
    {
       var score = RequestedAt.ToUnixTimeMilliseconds();
       var stg = new PaymentStorage(CorrelationId, Ammount, PaymentProcessor);
@@ -38,7 +38,7 @@ public class StorageService
       _logger.LogTrace("Adding transaction - RequestedAt:{Timestamp} Score:{Score} Content:{Content}",
          RequestedAt, score, json);
 
-      var ret = _db.SortedSetAdd(Key, json, score);
+      var ret = await _db.SortedSetAddAsync(Key, json, score/*, flags: CommandFlags.FireAndForget*/);
       if (!ret)
       {
          _logger.LogError("Error inserting transation into log");
