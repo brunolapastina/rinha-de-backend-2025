@@ -124,7 +124,7 @@ public class PaymentWorker : BackgroundService
       {
          _defaultProcessedPaymentsCounter.Add(1);
          _defaultResponseTime.Record(_sw.ElapsedMilliseconds);
-         _storageService.AddTransaction(ppReq.RequestedAt, ppReq.CorrelationId, ppReq.Ammount, PaymentProcessor.Default);
+         await _storageService.AddTransaction(ppReq.RequestedAt, ppReq.CorrelationId, ppReq.Ammount, PaymentProcessor.Default);
       }
       else
       {
@@ -136,7 +136,7 @@ public class PaymentWorker : BackgroundService
          {
             _fallbackProcessedPaymentsCounter.Add(1);
             _fallbackResponseTime.Record(_sw.ElapsedMilliseconds);
-            _storageService.AddTransaction(ppReq.RequestedAt, ppReq.CorrelationId, ppReq.Ammount, PaymentProcessor.Fallback);
+            await _storageService.AddTransaction(ppReq.RequestedAt, ppReq.CorrelationId, ppReq.Ammount, PaymentProcessor.Fallback);
          }
          else
          {
