@@ -6,7 +6,7 @@ import { uuidv4 } from "https://jslib.k6.io/k6-utils/1.4.0/index.js";
 
 const MAX_REQUESTS = __ENV.MAX_REQUESTS ?? 500;
 
-export let options = {
+export const options = {
    summaryTrendStats: [
       "p(99)",
       "count",

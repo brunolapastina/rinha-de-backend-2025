@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 
-RUN apt-get update && apt-get install -y clang zlib1g-dev binutils-aarch64-linux-gnu
+RUN apt-get update && apt-get install -y clang binutils-aarch64-linux-gnu zlib1g-dev
 
 WORKDIR /app
 

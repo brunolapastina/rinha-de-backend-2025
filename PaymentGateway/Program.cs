@@ -8,6 +8,10 @@ namespace PaymentGateway;
 
 public class Program
 {
+    protected Program()
+    {
+    }
+
     public static void Main(string[] args)
     {
         GCSettings.LatencyMode = GCLatencyMode.LowLatency;
@@ -43,11 +47,11 @@ public class Program
             })
             .ConfigureHttpClient(client =>
             {
-               client.Timeout = TimeSpan.FromSeconds(3);
-               client.DefaultRequestHeaders.ConnectionClose = false;
-               client.DefaultRequestHeaders.Add("Connection", "keep-alive");
-               client.DefaultRequestHeaders.Add("Keep-Alive", "timeout=30, max=100");
-            }); ;
+                client.Timeout = TimeSpan.FromSeconds(3);
+                client.DefaultRequestHeaders.ConnectionClose = false;
+                client.DefaultRequestHeaders.Add("Connection", "keep-alive");
+                client.DefaultRequestHeaders.Add("Keep-Alive", "timeout=30, max=100");
+            });
 
         builder.Services.AddKeyedSingleton("Default", (sp, key) =>
             ActivatorUtilities.CreateInstance<PaymentProcessorService>(sp, (key as string)!));
@@ -66,8 +70,8 @@ public class Program
 
         app.MapPost("/payments", async (PaymentRequest request, PaymentsQueue paymentQueue) =>
         {
-           await paymentQueue.Enqueue(request);
-           return TypedResults.Ok();
+            await paymentQueue.Enqueue(request);
+            return TypedResults.Ok();
         });
 
         app.MapGet("/payments-summary", async ([FromQuery] DateTime? from, [FromQuery] DateTime? to, StorageService storageService) =>

@@ -30,7 +30,6 @@ public class PaymentProcessorService
 
    public async Task<bool> SendPayment(PaymentProcessorRequest ppReq, CancellationToken cancellationToken)
    {
-      //TODO: have a memoryPool of StringContent`s so that we decrease the GC pressure
       using var content = JsonContent.Create(ppReq, AppJsonSerializerContext.Default.PaymentProcessorRequest, JsonContetType);
 
       using var request = new HttpRequestMessage(HttpMethod.Post, PaymentsEndpoint)

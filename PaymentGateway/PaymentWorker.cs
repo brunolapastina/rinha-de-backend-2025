@@ -79,12 +79,9 @@ public class PaymentWorker : BackgroundService
 
       _logger.LogInformation("Starting {WorkerLoopCount} processing loops", _workerLoopCount);
 
-      //var healthCheck = HealthCheckLoop(stoppingToken);
-
       var workers = Enumerable
          .Range(0, _workerLoopCount)
          .Select(async id => await ProcessingLoop(id, stoppingToken)) // generator
-         //.Append(healthCheck)
          .ToArray();
 
       await Task.WhenAll(workers);
@@ -145,34 +142,5 @@ public class PaymentWorker : BackgroundService
       }      
       
       return res;
-   }
-
-   private async Task HealthCheckLoop(CancellationToken cancellationToken)
-   {
-      _logger.LogInformation("Started health check loop");
-
-      while (!cancellationToken.IsCancellationRequested)
-      {
-         var defaultHc = await _defaultPaymentProcessor.GetServiceHealth(cancellationToken);
-         if (defaultHc.HasValue)
-         {
-            _currentHealth.DefaultFailing = defaultHc.Value.Failing;
-            _currentHealth.DefaultMinResponseTime = defaultHc.Value.MinResponseTime;
-         }
-
-         var fallbackHc = await _fallbackPaymentProcessor.GetServiceHealth(cancellationToken);
-         if (fallbackHc.HasValue)
-         {
-            _currentHealth.FallbackFailing = fallbackHc.Value.Failing;
-            _currentHealth.FallbackMinResponseTime = fallbackHc.Value.MinResponseTime;
-         }
-
-         _logger.LogInformation("[HealthCheck] Default:[Failing:{defaultFailing}, MinResponseTime:{defaultMinResponseTime}] Fallback:[Failing:{fallbackFailing}, MinResponseTime:{fallbackMinResponseTime}]",
-         _currentHealth.DefaultFailing, _currentHealth.DefaultMinResponseTime, _currentHealth.FallbackFailing, _currentHealth.FallbackMinResponseTime);
-
-         await Task.Delay(5000, cancellationToken);
-      }
-
-      _logger.LogInformation("Ended health check loop");
    }
 }

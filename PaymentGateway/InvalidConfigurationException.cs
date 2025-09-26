@@ -1,7 +1,7 @@
 namespace PaymentGateway;
 
 [Serializable]
-internal class InvalidConfigurationException : Exception
+public class InvalidConfigurationException : Exception
 {
    public InvalidConfigurationException()
    {
