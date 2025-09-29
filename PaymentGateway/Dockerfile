@@ -1,6 +1,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
 
-RUN apt-get update && apt-get install -y clang binutils-aarch64-linux-gnu zlib1g-dev
+RUN apt-get update && apt-get install -y --no-install-recommends binutils-aarch64-linux-gnu clang zlib1g-dev
 
 WORKDIR /app
 
@@ -13,6 +13,8 @@ RUN dotnet publish -c Release -o out
 
 # Build runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:9.0
+
+USER app
 WORKDIR /app
 COPY --from=build /app/out .
 ENTRYPOINT [ "./PaymentGateway" ]
