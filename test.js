@@ -37,7 +37,7 @@ let responseTime = new Trend('response_time', true);
 const transactionsSuccessCounter = new Counter("transactions_success");
 const transactionsFailureCounter = new Counter("transactions_failure");
 
-const paymentRequestFixedAmount = new Big(19.90);
+const paymentRequestFixedAmount = new Big(19.9);
 
 export async function payments() {
    const payload = {

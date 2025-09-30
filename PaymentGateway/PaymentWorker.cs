@@ -13,8 +13,6 @@ public class PaymentWorker : BackgroundService
    private readonly PaymentProcessorService _defaultPaymentProcessor;
    private readonly PaymentProcessorService _fallbackPaymentProcessor;
 
-   private readonly CurrentHealth _currentHealth = new();
-
    private readonly Counter<int> _defaultProcessedPaymentsCounter;
    private readonly Counter<int> _fallbackProcessedPaymentsCounter;
    private readonly Counter<int> _errorsCounter;
