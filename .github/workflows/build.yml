@@ -42,6 +42,6 @@ jobs:
           TOKEN: ${{ secrets.SONAR_TOKEN }}
         shell: powershell
         run: |
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"brunolapastina_rinha-de-backend-2025" /o:"brunolapastina" /d:sonar.token="$TOKEN"
+          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"brunolapastina_rinha-de-backend-2025" /o:"brunolapastina" /d:sonar.token="$env:TOKEN"
           dotnet build
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="$TOKEN"
+          ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="$env:TOKEN"
