@@ -18,6 +18,6 @@ public readonly record struct PaymentStorage(string CorrelationId, decimal Ammou
 [JsonSerializable(typeof(PaymentSummaryResponse))]
 [JsonSerializable(typeof(PaymentSummaryData))]
 [JsonSerializable(typeof(PaymentStorage))]
-internal partial class AppJsonSerializerContext : JsonSerializerContext
+public partial class AppJsonSerializerContext : JsonSerializerContext
 {
 }

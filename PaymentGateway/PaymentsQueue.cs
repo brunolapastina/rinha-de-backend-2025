@@ -30,4 +30,6 @@ public class PaymentsQueue
    {
       return _channel.Writer.WriteAsync(request);
    }
+
+   public bool IsQueueEmpty() => _channel.Reader.Count == 0;
 }

@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace PaymentGateway;
 
-public class Program
+public partial class Program
 {
     protected Program()
     {
@@ -59,7 +59,7 @@ public class Program
         builder.Services.AddKeyedSingleton("Fallback", (sp, key) =>
             ActivatorUtilities.CreateInstance<PaymentProcessorService>(sp, (key as string)!));
 
-        builder.Services.AddSingleton<StorageService>();
+        builder.Services.AddSingleton<IStorageService, StorageService>();
         builder.Services.AddSingleton<PaymentsQueue>();
         builder.Services.AddHostedService<PaymentWorker>();
 
@@ -74,7 +74,7 @@ public class Program
             return TypedResults.Ok();
         });
 
-        app.MapGet("/payments-summary", async ([FromQuery] DateTime? from, [FromQuery] DateTime? to, StorageService storageService) =>
+        app.MapGet("/payments-summary", async ([FromQuery] DateTime? from, [FromQuery] DateTime? to, IStorageService storageService) =>
         {
             var res = await storageService.GetSummary(from, to);
             var grp = res.GroupBy(x => x.PaymentProcessor);

@@ -3,7 +3,7 @@ using StackExchange.Redis;
 
 namespace PaymentGateway;
 
-public class StorageService
+public class StorageService : IStorageService
 {
    private const string Key = "transactions:logs"; // sorted set key
 

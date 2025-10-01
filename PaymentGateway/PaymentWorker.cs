@@ -9,7 +9,7 @@ public class PaymentWorker : BackgroundService
    private readonly bool _startFresh;
    private readonly int _workerLoopCount;
    private readonly PaymentsQueue _paymentQueue;
-   private readonly StorageService _storageService;
+   private readonly IStorageService _storageService;
    private readonly PaymentProcessorService _defaultPaymentProcessor;
    private readonly PaymentProcessorService _fallbackPaymentProcessor;
 
@@ -24,7 +24,7 @@ public class PaymentWorker : BackgroundService
       IConfiguration configuration,
       IMeterFactory meterFactory,
       PaymentsQueue paymentQueue,
-      StorageService storageService,
+      IStorageService storageService,
       [FromKeyedServices("Default")] PaymentProcessorService defaultPaymentProcessor,
       [FromKeyedServices("Fallback")] PaymentProcessorService fallbackPaymentProcessor)
    {
