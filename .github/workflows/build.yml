@@ -31,18 +31,19 @@ jobs:
           path: ${{ runner.temp }}\scanner
           key: ${{ runner.os }}-sonar-scanner
           restore-keys: ${{ runner.os }}-sonar-scanner
-      - name: Install SonarQube Cloud scanner
+      - name: Install SonarQube Cloud scanner and dotnet-coverage
         if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
         shell: powershell
         run: |
           New-Item -Path ${{ runner.temp }}\scanner -ItemType Directory
           dotnet tool update dotnet-sonarscanner --tool-path ${{ runner.temp }}\scanner
+          dotnet tool install --global dotnet-coverage
       - name: Build and analyze
         env:
           TOKEN: ${{ secrets.SONAR_TOKEN }}
         shell: powershell
         run: |
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"brunolapastina_rinha-de-backend-2025" /o:"brunolapastina" /d:sonar.token="$env:TOKEN"
-          dotnet build
-          dotnet test --collect "Code Coverage"
+          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"brunolapastina_rinha-de-backend-2025" /o:"brunolapastina" /d:sonar.token="$env:TOKEN" /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml
+          dotnet build --no-incremental
+          dotnet-coverage collect "dotnet test" -f xml -o "coverage.xml"
           ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="$env:TOKEN"
