@@ -44,4 +44,5 @@ jobs:
         run: |
           ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"brunolapastina_rinha-de-backend-2025" /o:"brunolapastina" /d:sonar.token="$env:TOKEN"
           dotnet build
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="$env:TOKEN"
+          dotnet test --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.XPlatCodeCoverage.Configuration.Format=cobertura -- DataCollectionRunSettings.DataCollectors.XPlatCodeCoverage.Configuration.OutputPath=./TestResults/
+          ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="$env:TOKEN" /d:sonar.cs.opencover.reportsPaths="TestResults/**/*.cobertura.xml"
