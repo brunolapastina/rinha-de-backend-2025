@@ -37,12 +37,12 @@ jobs:
         run: |
           New-Item -Path ${{ runner.temp }}\scanner -ItemType Directory
           dotnet tool update dotnet-sonarscanner --tool-path ${{ runner.temp }}\scanner
-          dotnet tool install --global dotnet-coverage
       - name: Build and analyze
         env:
           TOKEN: ${{ secrets.SONAR_TOKEN }}
         shell: powershell
         run: |
+          dotnet tool install --global dotnet-coverage
           ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"brunolapastina_rinha-de-backend-2025" /o:"brunolapastina" /d:sonar.token="$env:TOKEN" /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml
           dotnet build --no-incremental
           dotnet-coverage collect "dotnet test" -f xml -o "coverage.xml"
