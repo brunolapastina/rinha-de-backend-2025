@@ -8,9 +8,7 @@ namespace PaymentGateway;
 
 public partial class Program
 {
-    protected Program()
-    {
-    }
+    protected Program() { }
 
     public static void Main(string[] args)
     {
@@ -33,31 +31,8 @@ public partial class Program
             options.SerializerOptions.TypeInfoResolverChain.Insert(0, AppJsonSerializerContext.Default);
         });
 
-        builder.Services
-            .AddHttpClient("PaymentProcessor")
-            .ConfigurePrimaryHttpMessageHandler(() => new SocketsHttpHandler
-            {
-                PooledConnectionLifetime = TimeSpan.FromMinutes(5),     // Recycle connections periodically to avoid stale DNS entries
-                PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),  // Drop idle connections (frees sockets under high load)
-                MaxConnectionsPerServer = 20,                           // Controls parallelism per destination
-                EnableMultipleHttp2Connections = true,                  // True = faster reuse of sockets across DNS changes, but stale DNS info may persist if you don’t set a lifetime
-                AutomaticDecompression = DecompressionMethods.None,     // Disables automatic decompression if you don’t need it
-                UseProxy = false,                                       // For high performance, disable proxy unless you need it
-                UseCookies = false                                      // Don't need cookies, so turn it off
-            })
-            .ConfigureHttpClient(client =>
-            {
-                client.Timeout = TimeSpan.FromSeconds(3);
-                client.DefaultRequestHeaders.ConnectionClose = false;
-                client.DefaultRequestHeaders.Add("Connection", "keep-alive");
-                client.DefaultRequestHeaders.Add("Keep-Alive", "timeout=30, max=100");
-            });
-
-        builder.Services.AddKeyedSingleton("Default", (sp, key) =>
-            ActivatorUtilities.CreateInstance<PaymentProcessorService>(sp, (key as string)!));
-
-        builder.Services.AddKeyedSingleton("Fallback", (sp, key) =>
-            ActivatorUtilities.CreateInstance<PaymentProcessorService>(sp, (key as string)!));
+        ConfigurePaymentProcessor(builder, "Default");
+        ConfigurePaymentProcessor(builder, "Fallback");
 
         builder.Services.AddSingleton<IStorageService, StorageService>();
         builder.Services.AddSingleton<PaymentsQueue>();
@@ -89,4 +64,41 @@ public partial class Program
 
         app.Run();
     }
+
+    static private HttpMessageHandler ConfigureMessageHandler() =>
+        new SocketsHttpHandler
+        {
+            PooledConnectionLifetime = TimeSpan.FromMinutes(5),     // Recycle connections periodically to avoid stale DNS entries
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),  // Drop idle connections (frees sockets under high load)
+            MaxConnectionsPerServer = 20,                           // Controls parallelism per destination
+            EnableMultipleHttp2Connections = true,                  // True = faster reuse of sockets across DNS changes, but stale DNS info may persist if you don’t set a lifetime
+            AutomaticDecompression = DecompressionMethods.None,     // Disables automatic decompression if you don’t need it
+            UseProxy = false,                                       // For high performance, disable proxy unless you need it
+            UseCookies = false                                      // Don't need cookies, so turn it off
+        };
+
+    static private void ConfigureHttpClient(HttpClient client, IServiceProvider sp, string instance)
+    {
+        client.Timeout = TimeSpan.FromSeconds(3);
+        client.DefaultRequestHeaders.ConnectionClose = false;
+        client.DefaultRequestHeaders.Add("Connection", "keep-alive");
+        client.DefaultRequestHeaders.Add("Keep-Alive", "timeout=30, max=100");
+
+        var config = sp.GetService<IConfiguration>();
+
+        client.BaseAddress = new Uri(config?.GetSection($"PaymentProcessors:{instance}:BaseAddress").Get<string>() ??
+         throw new InvalidConfigurationException($"{instance} payment processor does not have a configured Base Address"));
+    }
+
+    static private void ConfigurePaymentProcessor(WebApplicationBuilder builder, string instance)
+    {
+        builder.Services
+            .AddHttpClient($"PaymentProcessor:{instance}")
+            .ConfigurePrimaryHttpMessageHandler(ConfigureMessageHandler)
+            .ConfigureHttpClient((sp, client) => ConfigureHttpClient(client, sp, instance));
+
+        builder.Services.AddKeyedSingleton(instance, (sp, key) =>
+            ActivatorUtilities.CreateInstance<PaymentProcessorService>(sp, (key as string)!));
+    }
+
 }

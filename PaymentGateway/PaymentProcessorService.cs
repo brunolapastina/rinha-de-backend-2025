@@ -17,15 +17,12 @@ public class PaymentProcessorService
    public PaymentProcessorService(ILogger<PaymentProcessorService> logger, IHttpClientFactory httpFactory, IConfiguration configuration, string key)
    {
       _logger = logger;
-      _client = httpFactory.CreateClient("PaymentProcessor");
+      _client = httpFactory.CreateClient($"PaymentProcessor:{_key}");
       _key = key;
-
-      _client.BaseAddress = new Uri(configuration.GetSection($"PaymentProcessors:{_key}:BaseAddress").Get<string>() ??
-         throw new InvalidConfigurationException($"{_key} payment processor does not have a configured Base Address"));
 
       _token = configuration.GetSection($"PaymentProcessors:{_key}:Token").Get<string>();
 
-      _logger.LogInformation("{PaymentProcessor} payment processor service created: BaseAddress={BaseAddress}", _key, _client.BaseAddress.ToString());
+      _logger.LogInformation("{PaymentProcessor} payment processor service created: BaseAddress={BaseAddress}", _key, _client.BaseAddress?.ToString());
    }
 
    public async Task<bool> SendPayment(PaymentProcessorRequest ppReq, CancellationToken cancellationToken)
