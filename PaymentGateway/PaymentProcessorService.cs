@@ -17,8 +17,8 @@ public class PaymentProcessorService
    public PaymentProcessorService(ILogger<PaymentProcessorService> logger, IHttpClientFactory httpFactory, IConfiguration configuration, string key)
    {
       _logger = logger;
-      _client = httpFactory.CreateClient($"PaymentProcessor:{_key}");
       _key = key;
+      _client = httpFactory.CreateClient($"PaymentProcessor:{_key}");
 
       _token = configuration.GetSection($"PaymentProcessors:{_key}:Token").Get<string>();
 
