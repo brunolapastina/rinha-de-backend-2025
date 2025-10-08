@@ -32,4 +32,5 @@ public class PaymentsQueue
    }
 
    public bool IsQueueEmpty() => _channel.Reader.Count == 0;
+   public int EnqueuedCount => _channel.Reader.Count;
 }
