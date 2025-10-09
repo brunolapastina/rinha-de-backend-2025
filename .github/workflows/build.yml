@@ -37,19 +37,7 @@ jobs:
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
 
-      #- name: Cache SonarQube Cloud scanner
-      #  id: cache-sonar-scanner
-      #  uses: actions/cache@v4
-      #  with:
-      #    path: ${{ runner.temp }}\scanner
-      #    key: ${{ runner.os }}-sonar-scanner
-      #    restore-keys: ${{ runner.os }}-sonar-scanner
-
       - name: Install SonarQube Cloud scanner and dotnet-coverage
-        #if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
-        #shell: powershell
-        #New-Item -Path ${{ runner.temp }}\scanner -ItemType Directory
-        #dotnet tool update dotnet-sonarscanner --tool-path ${{ runner.temp }}\scanner
         run: |
           dotnet tool install --global dotnet-sonarscanner
           dotnet tool install --global dotnet-coverage
@@ -58,15 +46,8 @@ jobs:
         env:
           TOKEN: ${{ secrets.SONAR_TOKEN }}
           RedisConfig: localhost:6379
-        #shell: powershell
-        #run: |
-        #  dotnet tool install --global dotnet-coverage
-        #  ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"brunolapastina_rinha-de-backend-2025" /o:"brunolapastina" /d:sonar.token="$env:TOKEN" /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml
-        #  dotnet build --no-incremental
-        #  dotnet-coverage collect "dotnet test" -f xml -o "coverage.xml"
-        #  ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="$env:TOKEN"
         run: |
           dotnet-sonarscanner begin /k:"brunolapastina_rinha-de-backend-2025" /o:"brunolapastina" /d:sonar.token="$TOKEN" /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml
           dotnet build --no-incremental
           dotnet-coverage collect "dotnet test" -f xml -o "coverage.xml"
-          dotnet-sonarscanner end /d:sonar.token="$env:TOKEN"
+          dotnet-sonarscanner end /d:sonar.token="$TOKEN"
