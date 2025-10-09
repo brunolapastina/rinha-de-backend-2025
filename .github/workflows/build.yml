@@ -9,6 +9,16 @@ jobs:
   build:
     name: Build and analyze
     runs-on: windows-latest
+    services:
+      redis:
+        image: redis:8-alpine # Or a specific version like redis:6
+        ports:
+          - 6379:6379 # Map Redis's default port
+        options: >- # Health check to ensure Redis is ready
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -40,6 +50,7 @@ jobs:
       - name: Build and analyze
         env:
           TOKEN: ${{ secrets.SONAR_TOKEN }}
+          RedisConfig: localhost:6379
         shell: powershell
         run: |
           dotnet tool install --global dotnet-coverage
