@@ -61,6 +61,9 @@ public class PaymentGatewayApiTest : IClassFixture<WebApplicationFactory<Program
       var queue = _factory.Services.GetService<PaymentsQueue>();
       Assert.NotNull(queue);
 
+      _defaultPaymentProcessor.IsFailing = false;
+      _fallbackPaymentProcessor.IsFailing = false;
+
       var payload = new PaymentRequest(Guid.NewGuid().ToString(), 19.9m);
       var response = await client.PostAsJsonAsync("/payments", payload);
 
@@ -94,6 +97,7 @@ public class PaymentGatewayApiTest : IClassFixture<WebApplicationFactory<Program
       Assert.NotNull(queue);
 
       _defaultPaymentProcessor.IsFailing = true;
+      _fallbackPaymentProcessor.IsFailing = false;
 
       var payload = new PaymentRequest(Guid.NewGuid().ToString(), 19.9m);
       var response = await client.PostAsJsonAsync("/payments", payload);
