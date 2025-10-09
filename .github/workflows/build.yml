@@ -8,7 +8,7 @@ on:
 jobs:
   build:
     name: Build and analyze
-    runs-on: windows-latest
+    runs-on: ubuntu-latest
     services:
       redis:
         image: redis:8-alpine # Or a specific version like redis:6
@@ -24,37 +24,49 @@ jobs:
         uses: actions/setup-java@v4
         with:
           java-version: 17
-          distribution: 'zulu' # Alternative distribution options are available.
+          distribution: 'temurin' # Alternative distribution options are available.
+
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+
       - name: Cache SonarQube Cloud packages
         uses: actions/cache@v4
         with:
           path: ~\sonar\cache
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
-      - name: Cache SonarQube Cloud scanner
-        id: cache-sonar-scanner
-        uses: actions/cache@v4
-        with:
-          path: ${{ runner.temp }}\scanner
-          key: ${{ runner.os }}-sonar-scanner
-          restore-keys: ${{ runner.os }}-sonar-scanner
+
+      #- name: Cache SonarQube Cloud scanner
+      #  id: cache-sonar-scanner
+      #  uses: actions/cache@v4
+      #  with:
+      #    path: ${{ runner.temp }}\scanner
+      #    key: ${{ runner.os }}-sonar-scanner
+      #    restore-keys: ${{ runner.os }}-sonar-scanner
+
       - name: Install SonarQube Cloud scanner and dotnet-coverage
-        if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
-        shell: powershell
+        #if: steps.cache-sonar-scanner.outputs.cache-hit != 'true'
+        #shell: powershell
+        #New-Item -Path ${{ runner.temp }}\scanner -ItemType Directory
+        #dotnet tool update dotnet-sonarscanner --tool-path ${{ runner.temp }}\scanner
         run: |
-          New-Item -Path ${{ runner.temp }}\scanner -ItemType Directory
-          dotnet tool update dotnet-sonarscanner --tool-path ${{ runner.temp }}\scanner
+          dotnet tool install --global dotnet-sonarscanner
+          
       - name: Build and analyze
         env:
           TOKEN: ${{ secrets.SONAR_TOKEN }}
           RedisConfig: localhost:6379
         shell: powershell
+        #run: |
+        #  dotnet tool install --global dotnet-coverage
+        #  ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"brunolapastina_rinha-de-backend-2025" /o:"brunolapastina" /d:sonar.token="$env:TOKEN" /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml
+        #  dotnet build --no-incremental
+        #  dotnet-coverage collect "dotnet test" -f xml -o "coverage.xml"
+        #  ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="$env:TOKEN"
         run: |
           dotnet tool install --global dotnet-coverage
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"brunolapastina_rinha-de-backend-2025" /o:"brunolapastina" /d:sonar.token="$env:TOKEN" /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml
+          dotnet-sonarscanner begin /k:"brunolapastina_rinha-de-backend-2025" /o:"brunolapastina" /d:sonar.token="$env:TOKEN" /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml
           dotnet build --no-incremental
           dotnet-coverage collect "dotnet test" -f xml -o "coverage.xml"
-          ${{ runner.temp }}\scanner\dotnet-sonarscanner end /d:sonar.token="$env:TOKEN"
+          dotnet-sonarscanner end /d:sonar.token="$env:TOKEN"
