@@ -57,7 +57,7 @@ jobs:
         env:
           TOKEN: ${{ secrets.SONAR_TOKEN }}
           RedisConfig: localhost:6379
-        shell: powershell
+        #shell: powershell
         #run: |
         #  dotnet tool install --global dotnet-coverage
         #  ${{ runner.temp }}\scanner\dotnet-sonarscanner begin /k:"brunolapastina_rinha-de-backend-2025" /o:"brunolapastina" /d:sonar.token="$env:TOKEN" /d:sonar.cs.vscoveragexml.reportsPaths=coverage.xml
