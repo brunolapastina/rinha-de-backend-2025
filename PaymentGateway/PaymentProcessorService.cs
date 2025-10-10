@@ -5,7 +5,6 @@ namespace PaymentGateway;
 public class PaymentProcessorService
 {
    static private readonly Uri PaymentsEndpoint = new ("/payments", UriKind.Relative);
-   static private readonly Uri ServiceHealthEndpoint = new("/payments/service-health", UriKind.Relative);
    static private readonly Uri PurgePaymentsEndpoint = new("/admin/purge-payments", UriKind.Relative);
    static private readonly System.Net.Http.Headers.MediaTypeHeaderValue JsonContetType = new("application/json");
 
