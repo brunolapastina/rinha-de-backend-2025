@@ -1,6 +1,10 @@
 # Rinha de Backend 2025
 
 [![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=brunolapastina_rinha-de-backend-2025&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=brunolapastina_rinha-de-backend-2025)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=brunolapastina_rinha-de-backend-2025&metric=bugs)](https://sonarcloud.io/summary/new_code?id=brunolapastina_rinha-de-backend-2025)
+[![Code Smells](https://sonarcloud.io/api/project_badges/measure?project=brunolapastina_rinha-de-backend-2025&metric=code_smells)](https://sonarcloud.io/summary/new_code?id=brunolapastina_rinha-de-backend-2025)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=brunolapastina_rinha-de-backend-2025&metric=coverage)](https://sonarcloud.io/summary/new_code?id=brunolapastina_rinha-de-backend-2025)
+[![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=brunolapastina_rinha-de-backend-2025&metric=duplicated_lines_density)](https://sonarcloud.io/summary/new_code?id=brunolapastina_rinha-de-backend-2025)
 
 Solução para o desafio proposto na [Rinha de Backend 2025](https://github.com/zanfranceschi/rinha-de-backend-2025).
 
