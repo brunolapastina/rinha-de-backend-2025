@@ -47,19 +47,6 @@ public class PaymentProcessorService
       return true;
    }
 
-   public async Task<ServiceHealthResponse?> GetServiceHealth(CancellationToken cancellationToken)
-   {
-      using var response = await _client.GetAsync(ServiceHealthEndpoint, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-      if (!response.IsSuccessStatusCode)
-      {
-         _logger.LogWarning("Error on {PaymentProcessor} payment processor. Endppoint={Endpoint} StatusCode={StatusCode} Content={ErrorContent}",
-            _key, ServiceHealthEndpoint, response.StatusCode, await response.Content.ReadAsStringAsync(cancellationToken));
-         return null;
-      }
-
-      return await response.Content.ReadFromJsonAsync(AppJsonSerializerContext.Default.ServiceHealthResponse, cancellationToken);
-   }
-
    public async Task PurgePayments(CancellationToken cancellationToken)
    {
       using var request = new HttpRequestMessage(HttpMethod.Post, PurgePaymentsEndpoint)
