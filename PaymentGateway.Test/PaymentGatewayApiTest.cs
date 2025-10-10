@@ -46,6 +46,7 @@ public class PaymentGatewayApiTest : IClassFixture<WebApplicationFactory<Program
 
          if (queue.IsQueueEmpty())
          {
+            await Task.Delay(10);
             break;
          }
       }
@@ -74,7 +75,6 @@ public class PaymentGatewayApiTest : IClassFixture<WebApplicationFactory<Program
       Assert.Empty(await response.Content.ReadAsStringAsync());
 
       await WaitForEmptyQueue(queue);
-      await Task.Delay(1000);
 
       Assert.Equal(1, _defaultPaymentProcessor.PaymentsCountSuccess);
       Assert.Equal(0, _defaultPaymentProcessor.PaymentsCountError);
