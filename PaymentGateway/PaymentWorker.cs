@@ -82,9 +82,8 @@ public class PaymentWorker : BackgroundService
          .Select(async id => await ProcessingLoop(id, stoppingToken)) // generator
          .ToArray();
 
+      _logger.LogInformation("Terminating all {ProcessingLoopsCount} processing loops", workers.Length);
       await Task.WhenAll(workers);
-
-
       _logger.LogInformation("All processing loops ended");
    }
 
@@ -94,7 +93,7 @@ public class PaymentWorker : BackgroundService
 
       while (await _paymentQueue.Reader.WaitToReadAsync(cancellationToken))
       {
-         while (_paymentQueue.Reader.TryRead(out PaymentRequest request))
+         while (_paymentQueue.Reader.TryRead(out PaymentRequest? request))
          {
             var res = await ProcessPayment(request, cancellationToken);
             if (!res)
@@ -107,37 +106,37 @@ public class PaymentWorker : BackgroundService
       _logger.LogDebug("Ended loop ID={Id}", id);
    }
 
-   private readonly Stopwatch _sw = new();
    private async Task<bool> ProcessPayment(PaymentRequest paymentRequest, CancellationToken cancellationToken)
    {
       var ppReq = new PaymentProcessorRequest(paymentRequest.CorrelationId, paymentRequest.Amount, DateTimeOffset.UtcNow);
 
-      _sw.Restart();
+      var sw = Stopwatch.StartNew();
       var res = await _defaultPaymentProcessor.SendPayment(ppReq, cancellationToken);
-      _sw.Stop();
+      sw.Stop();
       if (res)
       {
          _defaultProcessedPaymentsCounter.Add(1);
-         _defaultResponseTime.Record(_sw.ElapsedMilliseconds);
+         _defaultResponseTime.Record(sw.ElapsedMilliseconds);
          await _storageService.AddTransaction(ppReq.RequestedAt, ppReq.CorrelationId, ppReq.Ammount, PaymentProcessor.Default);
       }
       else
       {
+         // Recreate request to update the RequestedAt field
          ppReq = new PaymentProcessorRequest(paymentRequest.CorrelationId, paymentRequest.Amount, DateTimeOffset.UtcNow);
-         _sw.Restart();
+         sw.Restart();
          res = await _fallbackPaymentProcessor.SendPayment(ppReq, cancellationToken);
-         _sw.Stop();
+         sw.Stop();
          if (res)
          {
             _fallbackProcessedPaymentsCounter.Add(1);
-            _fallbackResponseTime.Record(_sw.ElapsedMilliseconds);
+            _fallbackResponseTime.Record(sw.ElapsedMilliseconds);
             await _storageService.AddTransaction(ppReq.RequestedAt, ppReq.CorrelationId, ppReq.Ammount, PaymentProcessor.Fallback);
          }
          else
          {
             _errorsCounter.Add(1);
          }
-      }      
+      }
       
       return res;
    }
