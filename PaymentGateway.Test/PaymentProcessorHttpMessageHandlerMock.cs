@@ -7,13 +7,13 @@ public class PaymentProcessorHttpMessageHandlerMock : HttpMessageHandler
    public bool IsFailing { get; set; } = false;
    public int PaymentsCountSuccess { get; private set; } = 0;
    public int PaymentsCountError { get; private set; } = 0;
-   public PaymentProcessorRequest LastPaymentProcessedSuccessfully { get; private set; }
+   public PaymentProcessorRequest? LastPaymentProcessedSuccessfully { get; private set; }
 
    public void ResetCounters()
    {
       PaymentsCountSuccess = 0;
       PaymentsCountError = 0;
-      LastPaymentProcessedSuccessfully = default;
+      LastPaymentProcessedSuccessfully = null;
    }
 
    protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
