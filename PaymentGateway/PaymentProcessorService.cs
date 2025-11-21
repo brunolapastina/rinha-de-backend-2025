@@ -26,24 +26,32 @@ public class PaymentProcessorService
 
    public async Task<bool> SendPayment(PaymentProcessorRequest ppReq, CancellationToken cancellationToken)
    {
-      using var content = JsonContent.Create(ppReq, AppJsonSerializerContext.Default.PaymentProcessorRequest, JsonContetType);
-
-      using var request = new HttpRequestMessage(HttpMethod.Post, PaymentsEndpoint)
+      try
       {
-         Version = HttpVersion.Version11,
-         VersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
-         Content = content
-      };
+         using var content = JsonContent.Create(ppReq, AppJsonSerializerContext.Default.PaymentProcessorRequest, JsonContetType);
 
-      using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
-      if (!response.IsSuccessStatusCode)
+         using var request = new HttpRequestMessage(HttpMethod.Post, PaymentsEndpoint)
+         {
+            Version = HttpVersion.Version11,
+            VersionPolicy = HttpVersionPolicy.RequestVersionOrLower,
+            Content = content
+         };
+
+         using var response = await _client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+         if (!response.IsSuccessStatusCode)
+         {
+            _logger.LogWarning("Error on {PaymentProcessor} payment processor. Endppoint={Endpoint} StatusCode={StatusCode} Content={ErrorContent}",
+               _key, PaymentsEndpoint, response.StatusCode, await response.Content.ReadAsStringAsync(cancellationToken));
+            return false;
+         }
+
+         return true;
+      }
+      catch (TaskCanceledException)
       {
-         _logger.LogWarning("Error on {PaymentProcessor} payment processor. Endppoint={Endpoint} StatusCode={StatusCode} Content={ErrorContent}",
-            _key, PaymentsEndpoint, response.StatusCode, await response.Content.ReadAsStringAsync(cancellationToken));
+         _logger.LogWarning("Timeout while sending payment to processor");
          return false;
       }
-
-      return true;
    }
 
    public async Task PurgePayments(CancellationToken cancellationToken)
