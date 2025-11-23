@@ -3,7 +3,6 @@ services:
   nginx:
     image: nginx:1-alpine
     container_name: rinha-nginx
-    platform: linux/amd64
     ports:
       - "9999:9999"
     volumes:
