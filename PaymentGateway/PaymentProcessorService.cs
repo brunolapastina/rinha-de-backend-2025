@@ -47,9 +47,9 @@ public class PaymentProcessorService
 
          return true;
       }
-      catch (TaskCanceledException)
+      catch (TaskCanceledException ex)
       {
-         _logger.LogWarning("Timeout while sending payment to processor");
+         _logger.LogWarning(ex, "Timeout while sending payment to processor");
          return false;
       }
    }
