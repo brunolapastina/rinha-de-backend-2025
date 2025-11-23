@@ -86,11 +86,12 @@ public class PaymentGatewayApiTest : IClassFixture<WebApplicationFactory<Program
 
       Assert.Equal(1, _defaultPaymentProcessor.PaymentsCountSuccess);
       Assert.Equal(0, _defaultPaymentProcessor.PaymentsCountError);
-      Assert.Equal(payload.CorrelationId, _defaultPaymentProcessor.LastPaymentProcessedSuccessfully.CorrelationId);
-      Assert.Equal(payload.Amount, _defaultPaymentProcessor.LastPaymentProcessedSuccessfully.Ammount);
+      Assert.NotNull(_defaultPaymentProcessor.LastPaymentProcessedSuccessfully);
+      Assert.Equal(payload.CorrelationId, _defaultPaymentProcessor.LastPaymentProcessedSuccessfully?.CorrelationId);
+      Assert.Equal(payload.Amount, _defaultPaymentProcessor.LastPaymentProcessedSuccessfully?.Ammount);
 
       _storageMock.Verify(
-          it => it.AddTransaction(_defaultPaymentProcessor.LastPaymentProcessedSuccessfully.RequestedAt, payload.CorrelationId, payload.Amount, PaymentProcessor.Default),
+          it => it.AddTransaction(_defaultPaymentProcessor.LastPaymentProcessedSuccessfully!.Value.RequestedAt, payload.CorrelationId, payload.Amount, PaymentProcessor.Default),
           Times.Once,
           "Transaction incorrectly added to the storage");
    }
