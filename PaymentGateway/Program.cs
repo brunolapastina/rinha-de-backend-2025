@@ -43,7 +43,7 @@ public partial class Program
         var appPort = app.Configuration.GetValue("AppPort", 8080);
         app.Urls.Add($"http://0.0.0.0:{appPort}");
 
-        app.MapPost("/payments", async (PaymentRequest request, PaymentsQueue paymentQueue) =>
+        app.MapPost("/payments", async ([FromBody] PaymentRequest request, PaymentsQueue paymentQueue) =>
         {
             await paymentQueue.Enqueue(request);
             return TypedResults.Ok();
@@ -53,13 +53,17 @@ public partial class Program
         {
             var res = await storageService.GetSummary(from, to);
             var grp = res.GroupBy(x => x.PaymentProcessor);
-            return Results.Ok(new PaymentSummaryResponse(
+            var summary = new PaymentSummaryResponse(
                 new PaymentSummaryData(
                     grp.FirstOrDefault(x => x.Key == PaymentProcessor.Default)?.Count() ?? 0,
                     grp.FirstOrDefault(x => x.Key == PaymentProcessor.Default)?.Sum(x => x.Ammount) ?? 0),
                 new PaymentSummaryData(
                     grp.FirstOrDefault(x => x.Key == PaymentProcessor.Fallback)?.Count() ?? 0,
-                    grp.FirstOrDefault(x => x.Key == PaymentProcessor.Fallback)?.Sum(x => x.Ammount) ?? 0)));
+                    grp.FirstOrDefault(x => x.Key == PaymentProcessor.Fallback)?.Sum(x => x.Ammount) ?? 0));
+            
+            app.Logger.LogInformation("Sumary requested from {From} to {To} => {Summary}", from, to, summary);
+
+            return Results.Ok(summary);
         });
 
         app.Run();
@@ -79,7 +83,7 @@ public partial class Program
 
     static private void ConfigureHttpClient(HttpClient client, IServiceProvider sp, string instance)
     {
-        client.Timeout = TimeSpan.FromSeconds(3);
+        client.Timeout = TimeSpan.FromSeconds(30);
         client.DefaultRequestHeaders.ConnectionClose = false;
         client.DefaultRequestHeaders.Add("Connection", "keep-alive");
         client.DefaultRequestHeaders.Add("Keep-Alive", "timeout=30, max=100");
