@@ -43,13 +43,13 @@ public partial class Program
         var appPort = app.Configuration.GetValue("AppPort", 8080);
         app.Urls.Add($"http://0.0.0.0:{appPort}");
 
-        app.MapPost("/payments", async ([FromBody] PaymentRequest request, PaymentsQueue paymentQueue) =>
+        app.MapPost("/payments", async (PaymentRequest request, HttpContext httpContext, PaymentsQueue paymentQueue) =>
         {
             await paymentQueue.Enqueue(request);
-            return TypedResults.Ok();
+            httpContext.Response.StatusCode = StatusCodes.Status200OK;
         });
 
-        app.MapGet("/payments-summary", async ([FromQuery] DateTime? from, [FromQuery] DateTime? to, IStorageService storageService) =>
+        app.MapGet("/payments-summary", async ([FromQuery] DateTime? from, [FromQuery] DateTime? to, HttpContext httpContext, IStorageService storageService) =>
         {
             var res = await storageService.GetSummary(from, to);
             var grp = res.GroupBy(x => x.PaymentProcessor);
@@ -60,10 +60,11 @@ public partial class Program
                 new PaymentSummaryData(
                     grp.FirstOrDefault(x => x.Key == PaymentProcessor.Fallback)?.Count() ?? 0,
                     grp.FirstOrDefault(x => x.Key == PaymentProcessor.Fallback)?.Sum(x => x.Ammount) ?? 0));
-            
-            app.Logger.LogInformation("Sumary requested from {From} to {To} => {Summary}", from, to, summary);
 
-            return Results.Ok(summary);
+            app.Logger.LogDebug("Sumary requested from {From} to {To} => {Summary}", from, to, summary);
+
+            httpContext.Response.StatusCode = StatusCodes.Status200OK;
+            httpContext.Response.WriteAsJsonAsync(summary, AppJsonSerializerContext.Default.PaymentSummaryResponse,);
         });
 
         app.Run();
