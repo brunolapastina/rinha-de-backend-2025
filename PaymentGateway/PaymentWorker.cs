@@ -7,7 +7,7 @@ public class PaymentWorker : BackgroundService
 {
    private readonly ILogger<PaymentWorker> _logger;
    private readonly bool _startFresh;
-   private readonly int _workerLoopCount;
+   private readonly int _processingBatchSize;
    private readonly PaymentsQueue _paymentQueue;
    private readonly IStorageService _storageService;
    private readonly PaymentProcessorService _defaultPaymentProcessor;
@@ -18,6 +18,8 @@ public class PaymentWorker : BackgroundService
    private readonly Counter<int> _errorsCounter;
    private readonly Histogram<long> _defaultResponseTime;
    private readonly Histogram<long> _fallbackResponseTime;
+
+   private int _lastBatchSize = 0;
 
    public PaymentWorker(
       ILogger<PaymentWorker> logger,
@@ -35,7 +37,7 @@ public class PaymentWorker : BackgroundService
       _fallbackPaymentProcessor = fallbackPaymentProcessor;
 
       _startFresh = configuration.GetValue("StartFresh", false);
-      _workerLoopCount = configuration.GetValue("NumOfProcessingTaks", 8);
+      _processingBatchSize = configuration.GetValue("ProcessingBatchSize", 100);
 
       var meter = meterFactory.Create("PaymentGateway");
       _defaultProcessedPaymentsCounter = meter.CreateCounter<int>(
@@ -52,6 +54,13 @@ public class PaymentWorker : BackgroundService
          name: "processing_errors",
          unit: "payments",
          description: "Total number of errors that happened during processing of payments");
+
+      meter.CreateObservableCounter(
+         name: "last_batch_size",
+         observeValue: () => new Measurement<int>(_lastBatchSize),
+         unit: "requests",
+         description: "Size of the last batch processed"
+      );
 
       _defaultResponseTime = meter.CreateHistogram<long>(
          name: "default_pp_response_time",
@@ -70,40 +79,41 @@ public class PaymentWorker : BackgroundService
    {
       if (_startFresh)
       {
+         _logger.LogInformation("Starting fresh");
          await _defaultPaymentProcessor.PurgePayments(stoppingToken);
          await _fallbackPaymentProcessor.PurgePayments(stoppingToken);
          await _storageService.ClearAllTransactions();
       }
 
-      _logger.LogInformation("Starting {WorkerLoopCount} processing loops", _workerLoopCount);
+      _logger.LogInformation("Starting processing loops");
 
-      var workers = Enumerable
-         .Range(0, _workerLoopCount)
-         .Select(async id => await ProcessingLoop(id, stoppingToken)) // generator
-         .ToArray();
+      var requests = new List<PaymentRequest>(_processingBatchSize);
 
-      _logger.LogInformation("Terminating all {ProcessingLoopsCount} processing loops", workers.Length);
-      await Task.WhenAll(workers);
-      _logger.LogInformation("All processing loops ended");
-   }
-
-   private async Task ProcessingLoop(int id, CancellationToken cancellationToken)
-   {
-      _logger.LogDebug("Started loop ID={Id}", id);
-
-      while (await _paymentQueue.Reader.WaitToReadAsync(cancellationToken))
+      while (await _paymentQueue.Reader.WaitToReadAsync(stoppingToken))
       {
-         while (_paymentQueue.Reader.TryRead(out PaymentRequest? request))
+         while ((requests.Count < _processingBatchSize) && 
+                _paymentQueue.Reader.TryRead(out PaymentRequest? request))
          {
-            var res = await ProcessPayment(request, cancellationToken);
+            requests.Add(request);
+         }
+
+         _lastBatchSize = requests.Count;
+
+         var beingProcessedTaks = requests.Select(async req =>
+         {
+            var res = await ProcessPayment(req, stoppingToken);
             if (!res)
             {  // Error processing payment, so enqueue it back
-               await _paymentQueue.Enqueue(request);
+               await _paymentQueue.Enqueue(req);
             }
-         }
+         });
+
+         await Task.WhenAll(beingProcessedTaks);
+
+         requests.Clear();
       }
 
-      _logger.LogDebug("Ended loop ID={Id}", id);
+      _logger.LogInformation("All processing loops ended");
    }
 
    private async Task<bool> ProcessPayment(PaymentRequest paymentRequest, CancellationToken cancellationToken)
