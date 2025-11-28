@@ -10,6 +10,7 @@ public class PaymentWorker : BackgroundService
    private readonly int _processingBatchSize;
    private readonly PaymentsQueue _paymentQueue;
    private readonly IStorageService _storageService;
+   private readonly IPaymentProcessorsHealth _ppHealth;
    private readonly PaymentProcessorService _defaultPaymentProcessor;
    private readonly PaymentProcessorService _fallbackPaymentProcessor;
 
@@ -27,11 +28,13 @@ public class PaymentWorker : BackgroundService
       IMeterFactory meterFactory,
       PaymentsQueue paymentQueue,
       IStorageService storageService,
+      IPaymentProcessorsHealth ppHealth,
       [FromKeyedServices("Default")] PaymentProcessorService defaultPaymentProcessor,
       [FromKeyedServices("Fallback")] PaymentProcessorService fallbackPaymentProcessor)
    {
       _logger = logger;
       _paymentQueue = paymentQueue;
+      _ppHealth = ppHealth;
       _storageService = storageService;
       _defaultPaymentProcessor = defaultPaymentProcessor;
       _fallbackPaymentProcessor = fallbackPaymentProcessor;
@@ -120,34 +123,42 @@ public class PaymentWorker : BackgroundService
    {
       var ppReq = new PaymentProcessorRequest(paymentRequest.CorrelationId, paymentRequest.Amount, DateTimeOffset.UtcNow);
 
-      var sw = Stopwatch.StartNew();
-      var res = await _defaultPaymentProcessor.SendPayment(ppReq, cancellationToken);
-      sw.Stop();
-      if (res)
+      var pp = _ppHealth.GetPreferedPaymentProcessor();
+      if(pp == PaymentProcessor.Default)
       {
-         _defaultProcessedPaymentsCounter.Add(1);
-         _defaultResponseTime.Record(sw.ElapsedMilliseconds);
-         await _storageService.AddTransaction(ppReq.RequestedAt, ppReq.CorrelationId, ppReq.Ammount, PaymentProcessor.Default);
+         return await ProcessPaymentOnProcessor(pp, _defaultPaymentProcessor, ppReq, _defaultProcessedPaymentsCounter, _defaultResponseTime, cancellationToken);
+      }
+      else if (pp == PaymentProcessor.Fallback)
+      {
+         return await ProcessPaymentOnProcessor(pp, _fallbackPaymentProcessor, ppReq, _fallbackProcessedPaymentsCounter, _fallbackResponseTime, cancellationToken);
+      }
+
+      throw new ApplicationException("Invalid payment processor delected");
+   }
+
+   private async Task<bool> ProcessPaymentOnProcessor(
+      PaymentProcessor processor, 
+      PaymentProcessorService processorService, 
+      PaymentProcessorRequest request, 
+      Counter<int> processorCounter,
+      Histogram<long> processorRespTime,
+      CancellationToken cancellationToken)
+   {
+      var sw = Stopwatch.StartNew();
+      var ret = await processorService.SendPayment(request, cancellationToken);
+      sw.Stop();
+
+      if (ret)
+      {
+         processorCounter.Add(1);
+         processorRespTime.Record(sw.ElapsedMilliseconds);
+         await _storageService.AddTransaction(request.RequestedAt, request.CorrelationId, request.Ammount, processor);
       }
       else
       {
-         // Recreate request to update the RequestedAt field
-         ppReq = new PaymentProcessorRequest(paymentRequest.CorrelationId, paymentRequest.Amount, DateTimeOffset.UtcNow);
-         sw.Restart();
-         res = await _fallbackPaymentProcessor.SendPayment(ppReq, cancellationToken);
-         sw.Stop();
-         if (res)
-         {
-            _fallbackProcessedPaymentsCounter.Add(1);
-            _fallbackResponseTime.Record(sw.ElapsedMilliseconds);
-            await _storageService.AddTransaction(ppReq.RequestedAt, ppReq.CorrelationId, ppReq.Ammount, PaymentProcessor.Fallback);
-         }
-         else
-         {
-            _errorsCounter.Add(1);
-         }
+         _errorsCounter.Add(1);
       }
-      
-      return res;
+
+      return ret;
    }
 }
