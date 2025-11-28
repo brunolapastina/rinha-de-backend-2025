@@ -36,6 +36,7 @@ public partial class Program
 
         builder.Services.AddSingleton<IStorageService, StorageService>();
         builder.Services.AddSingleton<PaymentsQueue>();
+        builder.Services.AddPaymentProcessorsHealthCheck();
         builder.Services.AddHostedService<PaymentWorker>();
 
         var app = builder.Build();
