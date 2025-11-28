@@ -64,7 +64,7 @@ public partial class Program
             app.Logger.LogDebug("Sumary requested from {From} to {To} => {Summary}", from, to, summary);
 
             httpContext.Response.StatusCode = StatusCodes.Status200OK;
-            httpContext.Response.WriteAsJsonAsync(summary, AppJsonSerializerContext.Default.PaymentSummaryResponse,);
+            await httpContext.Response.WriteAsJsonAsync(summary, AppJsonSerializerContext.Default.PaymentSummaryResponse);
         });
 
         app.Run();
