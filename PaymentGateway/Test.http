@@ -4,6 +4,10 @@ GET http://localhost:9999/payments-summary
 
 ###
 
+GET http://localhost:8001/payments/service-health
+
+###
+
 POST http://localhost:9999/payments
    Content-Type: application/json
    
