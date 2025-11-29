@@ -10,7 +10,7 @@ public class PaymentWorker : BackgroundService
    private readonly int _processingBatchSize;
    private readonly PaymentsQueue _paymentQueue;
    private readonly IStorageService _storageService;
-   private readonly IPaymentProcessorsHealth _ppHealth;
+   private readonly PaymentProcessorsHealth _ppHealth;
    private readonly PaymentProcessorService _defaultPaymentProcessor;
    private readonly PaymentProcessorService _fallbackPaymentProcessor;
 
@@ -28,7 +28,7 @@ public class PaymentWorker : BackgroundService
       IMeterFactory meterFactory,
       PaymentsQueue paymentQueue,
       IStorageService storageService,
-      IPaymentProcessorsHealth ppHealth,
+      PaymentProcessorsHealth ppHealth,
       [FromKeyedServices("Default")] PaymentProcessorService defaultPaymentProcessor,
       [FromKeyedServices("Fallback")] PaymentProcessorService fallbackPaymentProcessor)
    {

@@ -54,7 +54,7 @@ services:
       - RedisConfig=redis:6379
       - PaymentProcessors_Default_BaseAddress=http://payment-processor-default:8080
       - PaymentProcessors_Fallback_BaseAddress=http://payment-processor-fallback:8080
-      - HealthCheckMode=Server
+      - HealthCheckMode=Client
       - ProcessingBatchSize=10
 
   redis:

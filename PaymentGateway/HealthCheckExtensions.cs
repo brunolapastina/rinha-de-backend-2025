@@ -12,13 +12,11 @@ public static class HealthCheckExtensions
 
       if(healthCheckMode == HealthCheckMode.Server)
       {
-         services.AddSingleton<PaymentProcessorHealthServer>();
-         services.AddSingleton<IPaymentProcessorsHealth>(sp => sp.GetRequiredService<PaymentProcessorHealthServer>());
-         services.AddHostedService<HealthCheckWorker>();
+         services.AddSingleton<PaymentProcessorsHealth, PaymentProcessorHealthServer>();
       }
       else
       {
-         
+         services.AddSingleton<PaymentProcessorsHealth, PaymentProcessorHealthClient>();
       }
       
       return services;
