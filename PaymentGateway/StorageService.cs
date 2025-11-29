@@ -5,7 +5,8 @@ namespace PaymentGateway;
 
 public class StorageService : IStorageService
 {
-   private const string Key = "transactions:logs"; // sorted set key
+   private const string TransactionsKey = "transactions:logs"; // sorted set key
+   private const string HealthDataKey = "transactions:logs"; // sorted set key
 
    private readonly ILogger<StorageService> _logger;
    private readonly IDatabase _db;
@@ -28,7 +29,7 @@ public class StorageService : IStorageService
 
    public async Task ClearAllTransactions()
    {
-      await _db.KeyDeleteAsync(Key);
+      await _db.KeyDeleteAsync(TransactionsKey);
    }
 
    public async Task AddTransaction(DateTimeOffset RequestedAt, string CorrelationId, decimal Ammount, PaymentProcessor PaymentProcessor)
@@ -37,7 +38,7 @@ public class StorageService : IStorageService
       var stg = new PaymentStorage(CorrelationId, Ammount, PaymentProcessor);
       string json = JsonSerializer.Serialize(stg, AppJsonSerializerContext.Default.PaymentStorage);
 
-      var ret = await _db.SortedSetAddAsync(Key, json, score, _transactionFlags);
+      var ret = await _db.SortedSetAddAsync(TransactionsKey, json, score, _transactionFlags);
       if (!ret)
       {
          _logger.LogError("Error inserting transation into log");
@@ -48,11 +49,29 @@ public class StorageService : IStorageService
    {
       double start = from.HasValue ? new DateTimeOffset(from.Value).ToUnixTimeMilliseconds() : 0;
       double stop = to.HasValue ? new DateTimeOffset(to.Value).ToUnixTimeMilliseconds() : double.MaxValue;
-      var res = await _db.SortedSetRangeByScoreAsync(Key, start, stop);
+      var res = await _db.SortedSetRangeByScoreAsync(TransactionsKey, start, stop);
       var ret = res.Select(x => JsonSerializer.Deserialize(x!, AppJsonSerializerContext.Default.PaymentStorage)).ToArray();
 
       _logger.LogTrace("Got {PreCount} - {PostCount} entries from DB from Start:{Start} Stop:{Stop}", res.Length, ret.Length, start, stop);
 
       return ret;
+   }
+
+   public async Task SetHealthData(HealthData healthData)
+   {
+      string json = JsonSerializer.Serialize(healthData, AppJsonSerializerContext.Default.HealthData);
+      var ret = await _db.StringSetAsync(HealthDataKey, json);
+      if (!ret)
+      {
+         _logger.LogError("Error setting health data");
+      }
+   }
+
+   public async Task<HealthData?> GetHealthData()
+   {
+      var val = await _db.StringGetAsync(HealthDataKey);
+      return val.IsNullOrEmpty ? 
+         null :
+         JsonSerializer.Deserialize(val!, AppJsonSerializerContext.Default.HealthData);
    }
 }
