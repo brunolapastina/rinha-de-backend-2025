@@ -36,7 +36,7 @@ public partial class Program
 
         builder.Services.AddSingleton<IStorageService, StorageService>();
         builder.Services.AddSingleton<PaymentsQueue>();
-        builder.Services.AddPaymentProcessorsHealthCheck();
+        builder.Services.AddSingleton<PaymentProcessorsHealth>();
         builder.Services.AddHostedService<PaymentWorker>();
 
         var app = builder.Build();
@@ -74,8 +74,8 @@ public partial class Program
     static private HttpMessageHandler ConfigureMessageHandler() =>
         new SocketsHttpHandler
         {
-            PooledConnectionLifetime = TimeSpan.FromMinutes(5),     // Recycle connections periodically to avoid stale DNS entries
-            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(2),  // Drop idle connections (frees sockets under high load)
+            PooledConnectionLifetime = TimeSpan.FromMinutes(10),    // Recycle connections periodically to avoid stale DNS entries
+            PooledConnectionIdleTimeout = TimeSpan.FromMinutes(4),  // Drop idle connections (frees sockets under high load)
             MaxConnectionsPerServer = 20,                           // Controls parallelism per destination
             EnableMultipleHttp2Connections = true,                  // True = faster reuse of sockets across DNS changes, but stale DNS info may persist if you don’t set a lifetime
             AutomaticDecompression = DecompressionMethods.None,     // Disables automatic decompression if you don’t need it
