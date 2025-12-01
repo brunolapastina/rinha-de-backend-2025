@@ -6,11 +6,11 @@ namespace PaymentGateway;
 public class StorageService : IStorageService
 {
    private const string TransactionsKey = "transactions:logs"; // sorted set key
-   private const string HealthDataKey = "transactions:logs"; // sorted set key
+   private const string HealthDataKey = "healthData"; // sorted set key
 
    private readonly ILogger<StorageService> _logger;
+   
    private readonly IDatabase _db;
-
    private readonly CommandFlags _transactionFlags;
 
    public StorageService(ILogger<StorageService> logger, IConfiguration configuration)
