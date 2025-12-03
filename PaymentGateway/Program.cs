@@ -44,8 +44,9 @@ public partial class Program
         var appPort = app.Configuration.GetValue("AppPort", 8080);
         app.Urls.Add($"http://0.0.0.0:{appPort}");
 
-        app.MapPost("/payments", async (PaymentRequest request, HttpContext httpContext, PaymentsQueue paymentQueue) =>
+        app.MapPost("/payments", async (HttpContext httpContext, PaymentsQueue paymentQueue) =>
         {
+            var request = await httpContext.Request.ReadFromJsonAsync(AppJsonSerializerContext.Default.PaymentRequest);
             await paymentQueue.Enqueue(request);
             httpContext.Response.StatusCode = StatusCodes.Status200OK;
         });
