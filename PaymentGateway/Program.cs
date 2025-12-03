@@ -68,6 +68,13 @@ public partial class Program
             await httpContext.Response.WriteAsJsonAsync(summary, AppJsonSerializerContext.Default.PaymentSummaryResponse);
         });
 
+        app.MapPost("/purge-payments", async (HttpContext httpContext, IStorageService storageService) =>
+        {
+            app.Logger.LogInformation("Purging payments");
+            await storageService.ClearAllTransactions();
+            httpContext.Response.StatusCode = StatusCodes.Status200OK;
+        });
+
         app.Run();
     }
 
