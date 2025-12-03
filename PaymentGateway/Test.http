@@ -8,6 +8,30 @@ GET http://localhost:8001/payments/service-health
 
 ###
 
+GET http://localhost:8001/admin/payments-summary
+Content-Type: 'application/json',
+X-Rinha-Token: 123
+
+###
+
+GET http://localhost:8002/admin/payments-summary
+Content-Type: 'application/json',
+X-Rinha-Token: 123
+
+###
+
+POST http://localhost:8001/admin/purge-payments
+Content-Type: 'application/json',
+X-Rinha-Token: 123
+
+###
+
+POST http://localhost:8002/admin/purge-payments
+Content-Type: 'application/json',
+X-Rinha-Token: 123
+
+###
+
 POST http://localhost:9999/payments
    Content-Type: application/json
    
