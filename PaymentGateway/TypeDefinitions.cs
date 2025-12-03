@@ -4,8 +4,12 @@ namespace PaymentGateway;
 
 public enum PaymentProcessor { None, Default, Fallback }
 
-public sealed record class PaymentRequest(string CorrelationId, decimal Amount);
-public readonly record struct PaymentProcessorRequest(string CorrelationId, decimal Ammount, DateTimeOffset RequestedAt);
+public readonly record struct PaymentRequest(string CorrelationId, decimal Amount);
+public readonly record struct PaymentProcessorRequest(
+    string CorrelationId, 
+    decimal Amount, 
+    [property: JsonConverter(typeof(DateTimeOffsetConverter))]
+    DateTimeOffset RequestedAt);
 public readonly record struct ServiceHealthResponse(bool Failing, int MinResponseTime);
 public readonly record struct PaymentSummaryResponse(PaymentSummaryData Default, PaymentSummaryData Fallback);
 public readonly record struct PaymentSummaryData(int TotalRequests, decimal TotalAmount);

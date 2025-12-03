@@ -152,7 +152,7 @@ public class PaymentWorker : BackgroundService
       {
          processorCounter.Add(1);
          processorRespTime.Record(sw.ElapsedMilliseconds);
-         await _storageService.AddTransaction(request.RequestedAt, request.CorrelationId, request.Ammount, processor);
+         await _storageService.AddTransaction(request.RequestedAt, request.CorrelationId, request.Amount, processor);
       }
       else
       {
