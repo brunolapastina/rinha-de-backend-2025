@@ -5,9 +5,16 @@ namespace PaymentGateway;
 
 public class PaymentWorker : BackgroundService
 {
+   private enum TaskMode
+   {
+      DefaultOnly,
+      MostHealthy
+   }
+
    private readonly ILogger<PaymentWorker> _logger;
    private readonly bool _startFresh;
-   private readonly int _processingBatchSize;
+   private readonly int _workerLoopCount;
+   private readonly int _percentageOfMostHealthy;
    private readonly PaymentsQueue _paymentQueue;
    private readonly IStorageService _storageService;
    private readonly PaymentProcessorsHealth _ppHealth;
@@ -19,8 +26,6 @@ public class PaymentWorker : BackgroundService
    private readonly Counter<int> _errorsCounter;
    private readonly Histogram<long> _defaultResponseTime;
    private readonly Histogram<long> _fallbackResponseTime;
-
-   private int _lastBatchSize = 0;
 
    public PaymentWorker(
       ILogger<PaymentWorker> logger,
@@ -40,7 +45,8 @@ public class PaymentWorker : BackgroundService
       _fallbackPaymentProcessor = fallbackPaymentProcessor;
 
       _startFresh = configuration.GetValue("StartFresh", false);
-      _processingBatchSize = configuration.GetValue("ProcessingBatchSize", 100);
+      _workerLoopCount = configuration.GetValue("NumOfProcessingTaks", 8);
+      _percentageOfMostHealthy = configuration.GetValue("PercentageOfMostHealthy", 30);
 
       var meter = meterFactory.Create("PaymentGateway");
       _defaultProcessedPaymentsCounter = meter.CreateCounter<int>(
@@ -57,13 +63,6 @@ public class PaymentWorker : BackgroundService
          name: "processing_errors",
          unit: "payments",
          description: "Total number of errors that happened during processing of payments");
-
-      meter.CreateObservableCounter(
-         name: "last_batch_size",
-         observeValue: () => new Measurement<int>(_lastBatchSize),
-         unit: "requests",
-         description: "Size of the last batch processed"
-      );
 
       _defaultResponseTime = meter.CreateHistogram<long>(
          name: "default_pp_response_time",
@@ -88,35 +87,69 @@ public class PaymentWorker : BackgroundService
          await _storageService.ClearAllTransactions();
       }
 
-      _logger.LogInformation("Starting processing loops");
+      _logger.LogInformation("Starting {WorkerLoopCount} processing loops", _workerLoopCount);
 
-      var requests = new List<PaymentRequest>(_processingBatchSize);
+      var workers = Enumerable
+         .Range(0, _workerLoopCount)
+         .Select(async id =>
+         {
+            var mode = id < (_percentageOfMostHealthy * _workerLoopCount / 100) ? TaskMode.MostHealthy : TaskMode.DefaultOnly;
+            await ProcessingLoop(id, mode, stoppingToken);
+         })
+         .ToArray();
 
-      while (await _paymentQueue.Reader.WaitToReadAsync(stoppingToken))
+      await Task.WhenAll(workers);
+      _logger.LogInformation("All processing loops ended");
+   }
+
+   private async Task ProcessingLoop(int id, TaskMode mode, CancellationToken cancellationToken)
+   {
+      _logger.LogInformation("Started loop ID={Id} in Mode={Mode}", id, mode);
+
+      if (mode == TaskMode.MostHealthy)
       {
-         while ((requests.Count < _processingBatchSize) && 
-                _paymentQueue.Reader.TryRead(out PaymentRequest? request))
+         while (await _paymentQueue.Reader.WaitToReadAsync(cancellationToken))
          {
-            requests.Add(request);
-         }
-
-         _lastBatchSize = requests.Count;
-
-         var beingProcessedTaks = requests.Select(async req =>
-         {
-            var res = await ProcessPayment(req, stoppingToken);
-            if (!res)
-            {  // Error processing payment, so enqueue it back
-               await _paymentQueue.Enqueue(req);
+            while (_paymentQueue.Reader.TryRead(out PaymentRequest request))
+            {
+               var res = await ProcessPayment(request, cancellationToken);
+               if (!res)
+               {  // Error processing payment, so enqueue it back
+                  await _paymentQueue.Enqueue(request);
+               }
             }
-         });
+         }
+      }
+      else //if (mode == TaskMode.DefaultOnly)
+      {
+         var random = new Random();
+         while (await _paymentQueue.Reader.WaitToReadAsync(cancellationToken))
+         {
+            if(_ppHealth.HealthData.DefaultFailing)
+            {  // Default is failing. No point in reading anything
+               await Task.Delay(random.Next(100, 200), cancellationToken);
+               continue;
+            }
 
-         await Task.WhenAll(beingProcessedTaks);
-
-         requests.Clear();
+            while (_paymentQueue.Reader.TryRead(out PaymentRequest request))
+            {
+               var res = await ProcessPaymentOnDefault(request, cancellationToken);
+               if (!res)
+               {  // Error processing payment, so enqueue it back and break to check if Default is not failing
+                  await _paymentQueue.Enqueue(request);
+                  break;
+               }
+            }
+         }
       }
 
-      _logger.LogInformation("All processing loops ended");
+      _logger.LogInformation("Ended loop ID={Id}", id);
+   }
+
+   private async Task<bool> ProcessPaymentOnDefault(PaymentRequest paymentRequest, CancellationToken cancellationToken)
+   {
+      var ppReq = new PaymentProcessorRequest(paymentRequest.CorrelationId, paymentRequest.Amount, DateTimeOffset.UtcNow);
+      return await ProcessPaymentOnProcessor(PaymentProcessor.Default, _defaultPaymentProcessor, ppReq, _defaultProcessedPaymentsCounter, _defaultResponseTime, cancellationToken);
    }
 
    private async Task<bool> ProcessPayment(PaymentRequest paymentRequest, CancellationToken cancellationToken)
@@ -124,7 +157,7 @@ public class PaymentWorker : BackgroundService
       var ppReq = new PaymentProcessorRequest(paymentRequest.CorrelationId, paymentRequest.Amount, DateTimeOffset.UtcNow);
 
       var pp = _ppHealth.GetPreferedPaymentProcessor();
-      if(pp == PaymentProcessor.Default)
+      if (pp == PaymentProcessor.Default)
       {
          return await ProcessPaymentOnProcessor(pp, _defaultPaymentProcessor, ppReq, _defaultProcessedPaymentsCounter, _defaultResponseTime, cancellationToken);
       }
@@ -137,9 +170,9 @@ public class PaymentWorker : BackgroundService
    }
 
    private async Task<bool> ProcessPaymentOnProcessor(
-      PaymentProcessor processor, 
-      PaymentProcessorService processorService, 
-      PaymentProcessorRequest request, 
+      PaymentProcessor processor,
+      PaymentProcessorService processorService,
+      PaymentProcessorRequest request,
       Counter<int> processorCounter,
       Histogram<long> processorRespTime,
       CancellationToken cancellationToken)
