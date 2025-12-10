@@ -3,6 +3,7 @@ using System.Runtime;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Diagnostics.Metrics;
 
 namespace PaymentGateway;
 
@@ -15,6 +16,9 @@ public partial class Program
         GCSettings.LatencyMode = GCLatencyMode.LowLatency;
 
         var builder = WebApplication.CreateSlimBuilder(args);
+
+        builder.Logging.ClearProviders();
+        builder.Metrics.ClearListeners();
 
         builder.WebHost.ConfigureKestrel(serverOptions =>
         {
@@ -84,7 +88,7 @@ public partial class Program
         {
             PooledConnectionLifetime = TimeSpan.FromMinutes(10),    // Recycle connections periodically to avoid stale DNS entries
             PooledConnectionIdleTimeout = TimeSpan.FromMinutes(4),  // Drop idle connections (frees sockets under high load)
-            MaxConnectionsPerServer = 20,                           // Controls parallelism per destination
+            MaxConnectionsPerServer = 100,                          // Controls parallelism per destination
             EnableMultipleHttp2Connections = true,                  // True = faster reuse of sockets across DNS changes, but stale DNS info may persist if you don’t set a lifetime
             AutomaticDecompression = DecompressionMethods.None,     // Disables automatic decompression if you don’t need it
             UseProxy = false,                                       // For high performance, disable proxy unless you need it
