@@ -13,7 +13,7 @@ public sealed class PaymentProcessorsHealth : IAsyncDisposable, IDisposable
    public HealthData HealthData { get; set; } = new();
 
    public PaymentProcessorsHealth(
-      ILogger<PaymentProcessorsHealth> logger, 
+      ILogger<PaymentProcessorsHealth> logger,
       IConfiguration configuration,
       IStorageService storageService,
       [FromKeyedServices("Default")] PaymentProcessorService defaultPaymentProcessor,
@@ -27,7 +27,7 @@ public sealed class PaymentProcessorsHealth : IAsyncDisposable, IDisposable
       var healthCheckMode = configuration.GetValue<HealthCheckMode?>("HealthCheckMode", null) ??
          throw new InvalidConfigurationException("Health check mode has to be set to either Server or Client");
 
-      if(healthCheckMode == HealthCheckMode.Server)
+      if (healthCheckMode == HealthCheckMode.Server)
       {
          _timer = new Timer(UpdateHealthDataServer, null, TimeSpan.Zero, TimeSpan.FromSeconds(5));
       }
@@ -53,12 +53,18 @@ public sealed class PaymentProcessorsHealth : IAsyncDisposable, IDisposable
       {
          return PaymentProcessor.Fallback;
       }
-      else if (HealthData.DefaultMinRespTime > 1000 && (3 * HealthData.FallbackMinRespTime < (2 * HealthData.DefaultMinRespTime))) //Fallback < (2/3) * Default
+      else if (HealthData.DefaultMinRespTime < 502)
+      {
+         return PaymentProcessor.Default;
+      }
+      else if (!HealthData.FallbackFailing && (HealthData.FallbackMinRespTime < HealthData.DefaultMinRespTime * 3))
       {
          return PaymentProcessor.Fallback;
       }
-
-      return PaymentProcessor.Default;
+      else
+      {
+         return PaymentProcessor.Default;
+      }
    }
 
    private async void UpdateHealthDataServer(object? state)
@@ -68,25 +74,25 @@ public sealed class PaymentProcessorsHealth : IAsyncDisposable, IDisposable
          var defaultHealth = await _defaultPaymentProcessor.GetServiceHealth(default);
          var fallbackHealth = await _fallbackPaymentProcessor.GetServiceHealth(default);
 
-         if(defaultHealth.HasValue || fallbackHealth.HasValue)
+         if (defaultHealth.HasValue || fallbackHealth.HasValue)
          {
             HealthData.LastUpdate = DateTime.Now;
          }
 
-         if(defaultHealth.HasValue)
+         if (defaultHealth.HasValue)
          {
             HealthData.DefaultFailing = defaultHealth.Value.Failing;
             HealthData.DefaultMinRespTime = defaultHealth.Value.MinResponseTime;
          }
 
-         if(fallbackHealth.HasValue)
+         if (fallbackHealth.HasValue)
          {
             HealthData.FallbackFailing = fallbackHealth.Value.Failing;
             HealthData.FallbackMinRespTime = fallbackHealth.Value.MinResponseTime;
          }
 
-         _logger.LogInformation("[Health Server] [Default -> Failing:{Failing} MinRespTime:{MinRespTime}] [Fallback -> Failing:{Failing} MinRespTime:{MinRespTime}] -> Prefered:{PreferedProcessor}", 
-            HealthData.DefaultFailing, HealthData.DefaultMinRespTime, HealthData.FallbackFailing, HealthData.FallbackMinRespTime, 
+         _logger.LogInformation("[Health Server] [Default -> Failing:{Failing} MinRespTime:{MinRespTime}] [Fallback -> Failing:{Failing} MinRespTime:{MinRespTime}] -> Prefered:{PreferedProcessor}",
+            HealthData.DefaultFailing, HealthData.DefaultMinRespTime, HealthData.FallbackFailing, HealthData.FallbackMinRespTime,
             GetPreferedPaymentProcessor());
 
          await _storageService.SetHealthData(HealthData);
@@ -103,7 +109,7 @@ public sealed class PaymentProcessorsHealth : IAsyncDisposable, IDisposable
       {
          var health = await _storageService.GetHealthData();
 
-         if(health is null)
+         if (health is null)
          {
             _logger.LogWarning("No health data available to client");
             return;
@@ -115,8 +121,8 @@ public sealed class PaymentProcessorsHealth : IAsyncDisposable, IDisposable
          HealthData.FallbackFailing = health.FallbackFailing;
          HealthData.FallbackMinRespTime = health.FallbackMinRespTime;
 
-         _logger.LogInformation("[Health Client] [Default -> Failing:{Failing} MinRespTime:{MinRespTime}] [Fallback -> Failing:{Failing} MinRespTime:{MinRespTime}] -> Prefered:{PreferedProcessor}", 
-            HealthData.DefaultFailing, HealthData.DefaultMinRespTime, HealthData.FallbackFailing, HealthData.FallbackMinRespTime, 
+         _logger.LogInformation("[Health Client] [Default -> Failing:{Failing} MinRespTime:{MinRespTime}] [Fallback -> Failing:{Failing} MinRespTime:{MinRespTime}] -> Prefered:{PreferedProcessor}",
+            HealthData.DefaultFailing, HealthData.DefaultMinRespTime, HealthData.FallbackFailing, HealthData.FallbackMinRespTime,
             GetPreferedPaymentProcessor());
       }
       catch (Exception ex)
